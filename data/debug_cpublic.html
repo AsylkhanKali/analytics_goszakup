@@ -1,0 +1,596 @@
+<!DOCTYPE html><html lang="ru"><head>
+    <meta charset="utf-8">
+    <title>Портал государственных закупок Республики Казахстан</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="robots" content="noindex">
+    <meta name="csrf-token-name" content="csrf">
+    <meta name="csrf-token-hash" content="f5797f609b1322637ff5d4fbaa8004fe">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="57x57" href="/images/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/images/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/images/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/images/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/images/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/images/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/images/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/images/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon/favicon-16x16.png">
+    <link href="/css/bootstrap.min.css?1718828694" rel="stylesheet">
+    <link href="/fonts/fontawesome/css/all.min.css?1718828694" rel="stylesheet">
+    <link href="/css/style.css?1752638539" rel="stylesheet">
+    <link href="https://v3bl.goszakup.gov.kz/css/datepicker.css?1718828694" rel="stylesheet">
+<link href="https://v3bl.goszakup.gov.kz/css/bootstrap-datetimepicker.min.css?1718828694" rel="stylesheet">
+
+    <script src="/js/jquery.js?1718828694"></script>
+    <script src="/js/bootstrap.min.js?1718828694"></script>
+    <script src="/js/confirmation.js?1718828694"></script>
+    
+    
+    <script type="text/javascript" src="https://v3bl.goszakup.gov.kz/js/bootstrap.datepicker.js?1718828694" charset="utf-8"></script>
+<script type="text/javascript" src="https://v3bl.goszakup.gov.kz/js/bootstrap-datepicker.ru.js?1718828694" charset="utf-8"></script>
+<script type="text/javascript" src="https://v3bl.goszakup.gov.kz/js/helpers.js?1783147035" charset="utf-8"></script>
+<script type="text/javascript" src="https://v3bl.goszakup.gov.kz/js/moment.js?1718828694" charset="utf-8"></script>
+<script type="text/javascript" src="https://v3bl.goszakup.gov.kz/js/bootstrap-datetimepicker.js?1718828694" charset="utf-8"></script>
+
+    <script>
+            var user_id = 482091;
+            window.lang_key = "ru";
+            window.current_controller_url = "https://v3bl.goszakup.gov.kz/ru/egzcontract/cpublic";
+            
+            window.current_directory = "egzcontract/";
+            window.current_controller = "cpublic";
+            window.current_method = "index";
+
+            window.url_params = [];
+            ; var lang = 'ru'; var controller = 'cpublic';
+            $(document).on('click', '.send-read-notification', function () {
+                let btn = $(this);              // кнопка
+                let id = btn.data('id');
+                let type = btn.data('type');
+
+                let alertDiv = btn.closest('.alert').clone();
+                alertDiv.find('.send-read-notification').remove();
+                alertDiv.find('.toggle-notification').remove();
+                let alertHtml = alertDiv.html().trim();
+
+                $.post('/system_notice/ajax_read', { id: id, type: type, message: alertHtml}, function (response) {
+                    console.log("Ответ сервера:", response);
+                    if (response.success) {
+                        console.log('обработаем если успешно ')
+                        // Найти родительский alert
+                        let alertBlock = btn.closest('.alert');
+
+                        // Показать кнопку hide-notification
+                        alertBlock.find('.toggle-notification').removeClass('hide');
+
+                        // Удалить кнопку Ознакомиться
+                        btn.remove();
+                    } else {
+                        console.log('Ошибка выполнение ')
+                    }
+                });
+            });
+            $(document).on('click', '.toggle-notification', function () {
+                let btn = $(this);
+                let alertBox = btn.closest('.alert');
+                
+                let body = alertBox.find('.message_body');
+
+                if (body.hasClass('hide')) {
+                    // Если скрыто — показываем
+                    body.removeClass('hide');
+                    btn.text('Свернуть');
+                } else {
+                    // Если открыто — скрываем
+                    body.addClass('hide');
+                    btn.text('Подробнее');
+                }
+
+
+            });
+
+            function showToast(text, type = 'success') {
+                let toast = $(`
+        <div class="toast ${type}">${text}</div>
+    `);
+
+                $("#toast-container").append(toast);
+
+                setTimeout(() => toast.addClass("show"), 100);
+
+                // скрытие через 3 сек
+                setTimeout(() => {
+                    toast.removeClass("show");
+                    setTimeout(() => toast.remove(), 400);
+                }, 3000);
+            }
+    </script>
+    <style>
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+        }
+
+        .toast {
+            background: #333;
+            color: #fff;
+            padding: 12px 18px;
+            margin-top: 10px;
+            border-radius: 5px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.4s ease;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success { background: #28a745; }
+        .toast.error   { background: #dc3545; }
+
+    </style>
+</head>
+<body style="">
+
+<!-- BEGIN WRAP -->
+<div class="wrap">
+    <!-- BEGIN NAVBAR -->
+    <div id="navbar-main" class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#main-nav">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand big-screen-element" href="/">АИИС ЭГЗ</a>
+            </div>
+            <div id="main-nav" class="navbar-collapse collapse">
+                                <ul class="nav navbar-nav"><li><a href="https://goszakup.gov.kz">Главная</a></li><li><a href="https://wiki.goszakup.gov.kz/">Справка</a></li><li class="dropdown"><a data-id="181" href="#" class="dropdown-toggle" data-toggle="dropdown">Реестры <b class="caret"></b> </a><ul class="dropdown-menu"><li><a href="https://v3bl.goszakup.gov.kz/ru/complaint/reestrcomplaint">Реестр жалоб</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/careless/reestr">Реестр недобросовестных участников ГЗ</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/eDepository/dataWorkPerformed">Реестр опытов работы</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/careless/reestr/index_quasi">Реестр недобросовестных участников закупок</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/register/supplierreg">Реестр участников ГЗ </a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/register/plansreg">Планы ГЗ</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/egzcontract/cpublic">Реестр договоров</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/rqc/registry">Реестр квалифицированных поставщиков</a></li></ul></li><li class="dropdown"><a data-id="66" href="#" class="dropdown-toggle" data-toggle="dropdown">Закупки <b class="caret"></b> </a><ul class="dropdown-menu"><li><a href="https://v3bl.goszakup.gov.kz/ru/search/lots">Поиск лотов</a></li><li><a href="https://v3bl.goszakup.gov.kz/ru/searchanno">Поиск объявлений</a></li></ul></li></ul>
+                <ul class="nav navbar-nav navbar-right">
+                <li><a href="https://v3bl.goszakup.gov.kz/kz/egzcontract/cpublic">Қаз</a></li>
+                <li><a href="https://v3bl.goszakup.gov.kz/ru/egzcontract/cpublic">Рус</a></li>
+              
+                    <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    <span class="glyphicon glyphicon-user online" id="online-status"></span>
+                      ИП Садвакасов Сунгат Муратович                    
+                      <b class="caret"></b>
+                    </a>
+                    
+                    <ul class="dropdown-menu">
+                        <li><a href="https://v3bl.goszakup.gov.kz/ru/cabinet/profile">Кабинет</a></li>
+                        <li class="divider"></li>
+                        <li><a href="https://v3bl.goszakup.gov.kz/ru/favorites">Избранное</a></li>
+                        <li class="divider"></li>
+                        <li><a href="https://v3bl.goszakup.gov.kz/ru/user/sso_logout">Выход</a></li>
+                    </ul>
+                </li></ul>
+                <ul id="navbar-notice" class="nav navbar-nav navbar-right">                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle no-hover fa-lg" data-toggle="dropdown">
+                                <span class="label label-success"><i class="far fa-credit-card"></i> <span class="big-screen-element">Тариф активен</span></span></a>
+                            
+                            <ul class="dropdown-menu menu-sm" id="notify-container">
+                                <li><a href="https://v3bl.goszakup.gov.kz/ru/electronic_wallet/paid_services"><strong>Сумма заявки на участие в закупке не будет превышать 10 миллионов тенге</strong></a></li>
+                            </ul>
+                        </li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle no-hover fa-lg" data-toggle="dropdown"><span class="label label-success"><i class="far fa-bell"></i></span>&nbsp;</a><ul class="dropdown-menu menu-sm" id="notify-container"><li><a href="/ru/notices/">Все уведомления</a></li><li><a href="/ru/system_notice/">Системные уведомления</a></li><li><a href="/ru/notice_subscribe/">Управление уведомлениями</a></li> </ul>
+                </li></ul>
+            </div>
+        </div>
+    </div>
+    <!-- END NAVBAR -->
+
+    <!-- BEGIN CONTAINER -->
+    <div class="container-full">
+        <div class="alert alert-danger" id="offline-message">
+            <strong>Внимание!</strong> Соединение с приложением прервано. Пожалуйста, авторизуйтесь заново.
+        </div>
+        
+        
+        
+        
+        
+        <div id="loading" class="alert alert-info" style="display: none">Подождите, идет загрузка данных</div>
+        
+        <div class="alert alert-danger"><div style="display: flex; justify-content: space-between; align-items: center; width: 100%;"><p style="margin: 0;"><b> Уважаемый участник!</b></p> <button class="toggle-notification"> Подробнее</button></div><div class="message_body  hide"><p>Сообщаем, что в связи с необходимостью получения данных о банковских счетах участника от Комитета государственных доходов Министерства финансов Республики Казахстан (КГД МФ РК) и их передачу на Веб-портал государственных закупок Республики Казахстан, было обновлено соглашение об использовании веб-портала государственных закупок участником.<br>Для ознакомления и подписания данного соглашения необходимо <a href="https://v3bl.goszakup.gov.kz/ru/usage_agreement">перейти по ссылке</a><br>В случае, неподписания участником обновленного соглашения, регистрационные данные участника не будут обновлены.</p></div></div>
+                            <div class="alert alert-info"><div style="display: flex; justify-content: space-between; align-items: center; width: 100%;"><p style="margin: 0;"><b> Уважаемые потенциальные поставщики!</b></p> <button class="toggle-notification"> Подробнее</button></div><div class="message_body  hide"><p class="message_content">В целях исключения случаев, ранее возникавших на веб-портале государственных закупок при шифровании ценовых предложений, таких как дублирование ценовых предложений, некорректное отображение ценовых предложений, указание цен ниже допустимого уровня демпинга, необходимо обновить криптосокет до последней версии.<br>Просим вас установить актуальную версию криптосокета, который можно скачать по ссылке для ОС Windows <a href="https://v3bl.goszakup.gov.kz/uploads/crypto/SetupCryptoSocket_KzYes_CspYes_LngRu_20260630155801.exe">(ссылка)</a>, для ОС Mac <a href="https://v3bl.goszakup.gov.kz/uploads/crypto/CryptoSocketInstaller.zip">(ссылка)</a>.<br>Использование устаревших версий может привести к некорректной подаче ценовых предложений и невозможности их дальнейшей расшифровки.<br>В связи с чем с 5 сентября 2025 года система будет блокировать подачу ценовых предложений в случае необновленной версии криптосокета.<br><br>На ОС Mac рекомендуется обновить ПО для стабильной работы CryptoSocket.<br>В случае если Mac на Apple Silicon, может потребоваться установка Rosetta -
+                                        также macOS предлагает это автоматически при первом запуске установки CryptoSocket.<br>Отмечаем, что вышеуказанные версии криптосокета не подходят для использования 
+                                в банковских организациях.<br>Для определения подходящего криптосокета следует обращаться в тот банк, 
+                                с которым вы сотрудничаете.<br>Также ознакомиться с инструкцией по установке: для ПО на ОС Windows <a href="https://wiki.goszakup.gov.kz/download/attachments/3473429/%D0%98%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BA%D1%86%D0%B8%D1%8F_%D0%BF%D0%BE_%D1%83%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B5_%20TumarCSP.docx?version=1&amp;modificationDate=1728367054953&amp;api=v2">(ссылка)</a>, для ПО на ОС Mac <a href="https://wiki.goszakup.gov.kz/download/attachments/3473429/%D0%98%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BA%D1%86%D0%B8%D1%8F%20MacOS.docx?version=1&amp;modificationDate=1730875389286&amp;api=v2">(ссылка)</a>.<br> </p></div></div>
+                <div class="content-block"><div class="panel panel-default">
+    <div class="panel-heading"><h4>Реестр договоров</h4></div>
+    <div class="panel-body padding-bottom-0">
+        <form action="https://v3bl.goszakup.gov.kz/ru/egzcontract/cpublic" accept-charset="utf-8" class="form-horizontal" method="post"><div style="display:none">
+<input type="hidden" name="csrf" id="csrf" value="f5797f609b1322637ff5d4fbaa8004fe">
+</div>            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Номер договора</label>
+                        <div class="col-md-8"><input type="text" name="filter[contract_number]" id="filter[contract_number]" value="" class="form-control input-sm"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Дата заключения</label>
+                        <div class="col-md-4 date" id="datetimepicker1"><input type="text" name="filter[contract_start_date_from]" id="contract_start_date_from" value="" class="form-control input-sm" readonly="readonly" placeholder="с" data-date-format="yyyy-mm-dd"></div>
+                        <div class="col-md-4 date" id="datetimepicker2"><input type="text" name="filter[contract_start_date_to]" id="contract_start_date_to" value="" class="form-control input-sm" readonly="readonly" placeholder="по" data-date-format="yyyy-mm-dd"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row" id="extrasearch" style="display:none">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Тип договора</label>
+                        <div class="col-md-8"><select name="filter[contract_type]" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="1">Основной договор</option>
+<option value="2">Дополнительное соглашение</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Статус договора</label>
+                        <div class="col-md-8"><select name="filter[status]" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="185">Подписан</option>
+<option value="190">Действует</option>
+<option value="330">Не заключен</option>
+<option value="340">Расторгнут в одностороннем порядке</option>
+<option value="345">Ожидание расторжения договора</option>
+<option value="350">Расторгнут по соглашению сторон</option>
+<option value="375">Частично исполнен</option>
+<option value="390">Исполнен</option>
+<option value="450">Создано доп.соглашение</option>
+<option value="455">Изменен</option>
+<option value="456">Передача прав</option>
+<option value="460">Передан.Действует</option>
+<option value="461">Передан.Не заключен</option>
+<option value="462">Передан.Расторгнут в одностороннем порядке</option>
+<option value="463">Передан.Расторгнут по соглашению сторон</option>
+<option value="464">Передан.Исполнен</option>
+<option value="470">Срок договора истек</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Способ закупки</label>
+                        <div class="col-md-8"><select name="filter[method]" id="f_method" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="2">Открытый конкурс</option>
+<option value="3">Запрос ценовых предложений</option>
+<option value="6">Из одного источника по несостоявшимся закупкам</option>
+<option value="78">Аукцион</option>
+<option value="77">Аукцион (с 2022)</option>
+<option value="8">Через товарные биржи</option>
+<option value="23">Из одного источника путем прямого заключения договора</option>
+<option value="50">Закупка жилища</option>
+<option value="51">Закупка по государственному социальному заказу (бумажные)</option>
+<option value="128">Конкурс с применением специального порядка</option>
+<option value="32">Конкурс с предварительным квалификационным отбором</option>
+<option value="60">Электронный магазин</option>
+<option value="122">Договор на услуги государственного образовательного заказа</option>
+<option value="188">Конкурс с использованием рейтингово-балльной системы</option>
+<option value="133">Второй этап конкурса с использованием рамочного соглашения</option>
+<option value="55">Закупка жилища (не ГЗ)</option>
+</select> </div>
+                    </div>
+                    <div class="form-group" id="os_method_block" style="display: none">
+                        <label class="col-md-4 control-label">Плановый способ</label>
+                        <div class="col-md-8"><select name="filter[os_method]" id="f_os_method" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="2">Открытый конкурс</option>
+<option value="3">Запрос ценовых предложений</option>
+<option value="77">Аукцион (с 2022)</option>
+<option value="78">Аукцион</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Номер закупки</label>
+                        <div class="col-md-8"><input type="text" name="filter[buy_id]" id="f_buy_id" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Наименование закупки</label>
+                        <div class="col-md-8"><input type="text" name="filter[buy_name]" id="f_buy_name" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Форма заключения</label>
+                        <div class="col-md-8"><select name="filter[contract_form_type]" class="form-control input-sm" autocomplete="off">
+<option value="0">-----------------</option>
+<option value="1">Электронная, типовая форма</option>
+<option value="2">Электронная, не типовая форма</option>
+<option value="3">Не посредством Портала</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Однолетний/многолетний</label>
+                        <div class="col-md-8"><select name="filter[contract_year_type]" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="1">Однолетний</option>
+<option value="2">Многолетний</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Причина прекращения договора</label>
+                        <div class="col-md-8"><select name="filter[contract_cancel_reason]" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Финансовый год</label>
+                        <div class="col-md-8"><select name="filter[fin_year]" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="2022">2022</option>
+<option value="2023">2023</option>
+<option value="2024">2024</option>
+<option value="2025">2025</option>
+<option value="2020">2020</option>
+<option value="2021">2021</option>
+<option value="2018">2018</option>
+<option value="2019">2019</option>
+<option value="2015">2015</option>
+<option value="2016">2016</option>
+<option value="2017">2017</option>
+<option value="2014">2014</option>
+<option value="2028">2028</option>
+<option value="2029">2029</option>
+<option value="2030">2030</option>
+<option value="2026">2026</option>
+<option value="2027">2027</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Вид предмета закупки</label>
+                        <div class="col-md-8"><select name="filter[subject_type]" id="f_subject_type" class="form-control input-sm" autocomplete="off">
+<option value="0">-------</option>
+<option value="G">Товар</option>
+<option value="R">Работа</option>
+<option value="S">Услуга</option>
+</select> </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-justification_id" class="col-md-4 control-label">Обоснование применения способа закупки</label>
+                        <div class="col-md-8">
+                            <select name="filter[justification_id]" id="filter-justification_id" class="form-control input-sm">
+<option value=""></option>
+<option value="10">пп.10 п.3 ст.39 приобретение права природопользования</option>
+<option value="13">пп.13 п.3 ст.39 приобретения ценных бумаг, доли в уставном капитале юридических лиц;</option>
+<option value="14">пп.14 п.3 ст.39 приобретения товаров, работ, услуг, необходимых для осуществления монетарной деятельности, а также деятельности по управлению Нацио...</option>
+<option value="15">пп.15 п.3 ст.39 приобретения товаров, работ, услуг, предусмотренных законодательством Республики Казахстан о выборах и республиканском референдуме,...</option>
+<option value="46">пп.46 п.3 ст.39 приобретения театрально-зрелищной организацией, филармонией, музеем, культурно-досуговой организацией, кинематографической организа...</option>
+<option value="49">пп.49 п.3 ст.39 приобретения услуг по проведению технического и авторского надзора за проведением работ по сохранению объекта культурного наследия ...</option>
+<option value="102">Осуществление закупок с применением специального порядка</option>
+<option value="137">п.69 правил питания обучающихся. В целях обеспечения бесперебойной деятельности заказчика по организации питания обучающихся закупки осуществляются...</option>
+<option value="138">п.80 правил организации питания обучающихся. Заключение договора на последующий финансовый год (продление).</option>
+<option value="145">пп.1 п.287 приобретения услуг, относящихся к сферам естественных монополий, а также энергоснабжения или купли-продажи электрической энергии с гаран...</option>
+<option value="146">пп.2 п.287 приобретения товаров, услуг, являющихся объектами интеллектуальной собственности, у лица, обладающего исключительными правами в отношени...</option>
+<option value="147">пп.3 п.287 приобретения товаров, работ, услуг обособленными подразделениями заказчика на территории иностранного государства (за пределами территор...</option>
+<option value="148">пп.4 п.287 приобретения товаров, работ, услуг, необходимых для проведения мероприятий с участием Президента Республики Казахстан и иных охраняемых ...</option>
+<option value="149">пп.5 п.287 приобретения товаров, работ, услуг у лица, определенного законами Республики Казахстан</option>
+<option value="150">пп.6 п.287 приобретения имущества (активов), реализуемого на торгах (аукционах):
+судебными исполнителями в соответствии с законодательством Республ...</option>
+<option value="151">пп.7 п.287 приобретения космических снимков</option>
+<option value="152">пп.8 п.287 приобретения работ и услуг по ремонту авиационной техники на специализированных авиаремонтных предприятиях</option>
+<option value="154">пп.10 п.287 приобретения материалов выставок, семинаров, конференций, совещаний, форумов, симпозиумов, тренингов, стажировок, мастер-классов, а так...</option>
+<option value="156">пп.12 п.287 приобретения товаров, работ, услуг, если имеется необходимость в осуществлении закупок ежедневной и (или) еженедельной потребности (на ...</option>
+<option value="157">пп.13 п.287 приобретения товаров, работ, услуг для локализации и (или) ликвидации последствий чрезвычайных ситуаций, для ликвидации аварий на элект...</option>
+<option value="158">пп.14 п.287 приобретения товаров, работ, услуг для устранения причин и последствий, явившихся основанием для введения чрезвычайного положения. При ...</option>
+<option value="161">пп.17 п.287 приобретения услуг по обязательному медицинскому осмотру работников, занятых на тяжелых работах, работах с вредными (особо вредными) и ...</option>
+<option value="162">пп.18 п.287 приобретения услуг морского агента, морского брокера</option>
+<option value="163">пп.19 п.287 приобретения услуг по поверке и калибровке средств измерений и навигационного оборудования</option>
+<option value="165">пп.21 п.287 приобретения работ на объектах, предусматривающих соблюдение секретности их месторасположения</option>
+<option value="166">пп.22 п.287 приобретения товаров и услуг, связанных с полигонными испытаниями</option>
+<option value="167">пп.23 п.287 приобретение товаров (комплектующих и вспомогательных материалов) военного и двойного назначения в рамках исполнения договоров/соглашен...</option>
+<option value="168">пп.24 п.287 приобретения работ и услуг в целях реализации инвестиционных стратегических проектов, инвестиционной политики, инвестиционных мероприят...</option>
+<option value="169">пп.25 п.287 приобретения услуг эксплуатации подъездных путей</option>
+<option value="170">пп.26 п.287 приобретения услуг по аренде спутникового ресурса, воздушного судна</option>
+<option value="172">пп.28 п.287 приобретения консультационных услуг по размещению на фондовом рынке акций юридических лиц, пятьдесят и более процентов акций которых пр...</option>
+<option value="173">пп.29 п.287 приобретения сырья, инструментов и расходных материалов для обеспечения производственной деятельности специального конструкторско-техно...</option>
+<option value="174">пп.30 п.287 приобретения услуг по распространению, трансляции телепрограмм, в том числе, через спутники и наземные сооружения</option>
+<option value="175">пп.31 п.287 приобретения услуг по подготовке, переподготовке и повышению квалификации работников, а также услуг по подготовке к международной аккре...</option>
+<option value="176">пп.32 п.287 приобретения товаров, работ, услуг у организаций пятьдесят и более процентов акций (долей участия) которых прямо или косвенно принадлеж...</option>
+<option value="178">пп.34 п.287 приобретения услуг по авторскому надзору за разработкой проектной документации объектов капитального строительства, авторскому надзору ...</option>
+<option value="185">пп.11 п.287 приобретения заказчиком товаров, работ, услуг для исполнения обязательств по договору: о закупках, заключенному им в качестве поставщик...</option>
+<option value="187">пп.20 п.287  приобретения услуг по  аренде здания, строения, сооружения, помещения, имеющих нежилое назначение определенных актом в соответствии с ...</option>
+<option value="188">пп.27 п.287 приобретения услуг международных рейтинговых агентств, финансовых услуг</option>
+<option value="189">пп.37 пункта 287 приобретения химических реагентов и компонентов, расходных и упаковочных материалов для производства вакцин, медицинских и ветерин...</option>
+<option value="190">пп.38 пункта 287 приобретения или строительства центров обработки данных, имеющих стратегическое значение для обеспечения информационной безопаснос...</option>
+<option value="193">пп.15 п.287 приобретения услуг по подготовке и размещению информации в средствах массовой информации, а также услуг по предоставлению информации, р...</option>
+<option value="195">пп.39 пункта 287 приобретения товаров у лиц, определенных уполномоченным органом в области государственного стимулирования промышленности совместно...</option>
+<option value="196">пп. 37) п.3 ст. 16 Закона приобретения для нужд обороны, национальной безопасности, а также обеспечения правопорядка услуг связи, товаров, являющих...</option>
+<option value="197">пп. 18) п.3 ст. 16 Закона приобретения специальных социальных услуг, предусмотренных гарантированным объемом специальных социальных услуг и услуг п...</option>
+<option value="198">пп. 20) п.3 ст. 16 Закона приобретения государственным органом, обеспечивающим деятельность Президента Республики Казахстан, Парламента Республики ...</option>
+<option value="199">пп. 36) п.3 ст. 16 Закона приобретения спортивного инвентаря и оборудования (снаряжения), спортивной экипировки, необходимых для участия и (или) по...</option>
+<option value="200">пп. 1 п.3 ст. 16 приобретения услуг, относящихся к сферам естественных монополий, а также энергоснабжения или купли-продажи электрической энергии с...</option>
+<option value="201">пп. 2 п.3 ст. 16 приобретения товаров, услуг, являющихся объектами интеллектуальной собственности, у лица, обладающего исключительными правами в от...</option>
+<option value="202">пп. 4 п.3 ст. 16 Закона приобретения товаров, работ, услуг за счет денег, выделенных из резерва Правительства Республики Казахстан и (или) местного...</option>
+<option value="204">пп. 23) п.3 ст. 16 Закона приобретения товаров, работ, услуг государственными предприятиями, юридическими лицами, пятьдесят и более процентов голос...</option>
+<option value="205">пп. 25) п.3 ст. 16 Закона приобретения товаров, работ, услуг у лица, определенного законами Республики Казахстан</option>
+<option value="206">пп. 27) п.3 ст. 16 Закона приобретения услуг по подготовке космонавтов и организации осуществления полетов космонавтов в космос, а также товаров и ...</option>
+<option value="207">пп. 29) п.3 ст. 16 Закона приобретения услуг, связанных с направлением учащихся, студентов, аспирантов для участия в творческих состязаниях (конкур...</option>
+<option value="208">пп. 30) п.3 ст. 16 Закона приобретения товаров, являющихся культурными ценностями, в том числе музейных предметов и музейных коллекций, а также ред...</option>
+<option value="209">пп. 33) п.3 ст. 16 Закона размещения заказа на посещение зоопарка, театра, кинотеатра, концерта, цирка, музея, выставки и спортивного мероприятия</option>
+<option value="210">пп. 34) п.3 ст. 16 Закона приобретения услуг по авторскому надзору за разработкой проектной документации объектов капитального строительства, автор...</option>
+<option value="211">пп. 35) п.3 ст. 16 Закона если имеется необходимость в осуществлении государственных закупок ежедневной и (или) еженедельной потребности на период ...</option>
+<option value="212">пп. 39) п.3 ст. 16 Закона приобретения у общественных объединений лиц с инвалидностью Республики Казахстан услуг инватакси. Проект договора направл...</option>
+<option value="213">пп. 5 п.3 ст. 16 Закона приобретения услуг по хранению материальных ценностей государственного материального резерва</option>
+<option value="214">пп. 8) п.3 ст. 16 Закона приобретения услуг международных рейтинговых агентств, финансовых услуг, включая услуги по страхованию профессиональной от...</option>
+<option value="215">пп. 10) п.3 ст. 16 Закона приобретения услуг по изготовлению государственных и ведомственных наград и документов к ним, нагрудного знака депутата П...</option>
+<option value="216">пп. 11) п.3 ст. 16 Закона приобретения товаров, работ, услуг, осуществляемого в соответствии с международными договорами Республики Казахстан, по п...</option>
+<option value="218">пп. 13) п.3 ст. 16 Закона приобретения услуг по подготовке, переподготовке и повышению квалификации работников за рубежом</option>
+<option value="219">пп. 14) п.3 ст. 16 Закона приобретения услуг по лечению граждан Республики Казахстан за рубежом, а также услуг по их транспортировке и сопровождению</option>
+<option value="220">пп. 15) п.3 ст. 16 Закона приобретения товаров, работ, услуг: загранучреждениями Республики Казахстан, обособленными подразделениями заказчиков, де...</option>
+<option value="221">пп. 17) п.3 ст. 16 Закона приобретения услуг по предоставлению информации международными и (или) зарубежными информационными организациями</option>
+<option value="222">пп. 32) п.3 ст. 16 Закона приобретения организацией культуры, организацией образования в области культуры, оператором телерадиовещания товаров, раб...</option>
+<option value="223">пп. 19) п.3 ст. 16 Закона приобретения товаров, работ, услуг, производимых, выполняемых, оказываемых государственными предприятиями учреждений угол...</option>
+<option value="224">пп. 28) п.3 ст. 16 Закона приобретения однородных товаров, если годовой объем таких однородных товаров в стоимостном выражении не превышает стократ...</option>
+<option value="225">пп. 41) п.3 ст. 16 Закона приобретения товаров, работ, услуг, направленных на реализацию критически важных объектов и проектов общестранового значе...</option>
+<option value="227">пп. 38) п.3 ст. 16 Закона приобретения услуг по аренде здания, строения, сооружения, помещения, имеющих нежилое назначение, определенных актом в со...</option>
+<option value="228">пп. 7) п.3 ст. 16 Закона приобретения товаров, работ, услуг, необходимых для осуществления деятельности по предупреждению, пресечению и противодейс...</option>
+<option value="229">пп. 40) п.3 ст. 16 Закона приобретения товаров, работ, услуг, необходимых для обеспечения деятельности подразделений специального назначения госуда...</option>
+<option value="230">пп. 3 п.3 ст. 16 приобретения товаров, работ, услуг, необходимых для: предотвращения, локализации и (или) ликвидации кризисных ситуаций, последстви...</option>
+<option value="231">пп. 16) п.3 ст. 16 Закона приобретения товаров, услуг, связанных с представительскими расходами</option>
+<option value="232">пп. 31) п.3 ст. 16 Закона приобретения материалов выставок, семинаров, конференций, совещаний, форумов, симпозиумов, тренингов, а также оплаты за у...</option>
+<option value="233">пп. 26) п.3 ст. 16 Закона приобретения государственным органом товаров, работ, услуг при наличии заключения антимонопольного органа об отсутствии с...</option>
+<option value="234">пп. 9) п.3 ст. 16 Закона приобретения услуг специализированных библиотек для незрячих и слабовидящих граждан</option>
+<option value="235">пп. 43) п.3 ст. 16 Закона приобретения товаров, являющихся предметом офтейк-контрактов, заключаемых в соответствии с законодательством Республики К...</option>
+<option value="236">пп. 42) п.3 ст. 16 Закона приобретения товаров у юридического лица, заключившего соглашение об инвестициях, в соответствии со статьей 295-2 Предпри...</option>
+<option value="239">пп.40 пункта 287 приобретения товаров, работ, услуг на содержание автомобильных дорог международного и республиканского значения для устранения пос...</option>
+<option value="240">пп.32-2 пункта 287 приобретения национальными управляющими холдингами и организациями, пятьдесят и более процентов голосующих акций которых прямо и...</option>
+<option value="241">пп.29-1 пункта 287 приобретения товаров, работ и услуг для создания космических систем.</option>
+</select>                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Наименование заказчика</label>
+                        <div class="col-md-8"><input type="text" name="filter[customer_name]" id="filter[customer_name]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">ИИН/БИН заказчика</label>
+                        <div class="col-md-8"><input type="text" name="filter[customer_innbin]" id="filter[customer_innbin]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Наименование поставщика</label>
+                        <div class="col-md-8"><input type="text" name="filter[supplier_name]" id="filter[supplier_name]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">ИИН/БИН поставщика</label>
+                        <div class="col-md-8"><input type="text" name="filter[supplier_innbin]" id="filter[supplier_innbin]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Cумма договора от</label>
+                        <div class="col-md-8"><input type="text" name="filter[contract_summ_from]" id="filter[contract_summ_from]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Cумма договора до</label>
+                        <div class="col-md-8"><input type="text" name="filter[contract_summ_to]" id="filter[contract_summ_to]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Описание договора</label>
+                        <div class="col-md-8"><input type="text" name="filter[description]" id="filter[description]" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Договоры, заключенные в иностранной валюте</label>
+                        <div class="col-md-8"><input type="checkbox" name="filter[frgn_curr]" value="1" id="f_frgn_curr" autocomplete="off"> </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Код ЕНСТРУ</label>
+                        <div class="col-md-8"><input type="text" name="filter[enstru_code]" id="f_enstru_code" value="" class="form-control input-sm"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-md-4 control-label">Признак регистрации в Казначействе</label>
+                        <div class="col-md-8"><select name="filter[kk_reg_flag]" id="f_kk_reg_flag" class="form-control input-sm" autocomplete="off">
+<option value=""></option>
+<option value="1">Без регистрации</option>
+<option value="2">С регистрацией</option>
+</select> </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-right margin-bottom-15">
+                <a class="btn btn-sm btn-default" href="#" onclick="$('#extrasearch').toggle(); return false;"><span class="glyphicon glyphicon-filter"></span> Расширенный поиск</a>
+                <button type="submit" class="btn btn-sm btn-primary" name="filter_search"><span class="glyphicon glyphicon-search"></span> Искать</button>
+                <button type="submit" class="btn btn-sm btn-primary" name="filter_clear"><span class="glyphicon glyphicon-zoom-out"></span> Сбросить фильтр</button>
+            </div>
+        </form>
+        <table class="table table-font-12 table-hover table-condensed table-bordered margin-bottom-15">
+            <thead>
+                <tr>
+                    <th width="60" title="Идентификатор договора">Ид</th>
+                    <th width="150">Номер договора</th>
+                    <th width="80">Номер закупки</th>
+                    <th>Автор договора</th>
+                    <th>Тип договора</th>
+                    <th>Статус договора</th>
+                    <th>Способ закупки</th>
+                    <th width="80">Дата создания</th>
+                    <th>Финансовый год</th>
+                    <th width="100">Сумма без ндс / с ндс</th>
+                    <th>Заказчик</th>
+                    <th>Поставщик</th>
+                </tr>
+            </thead>
+            <tbody>
+                                    <tr><td colspan="14" class="text-center not-set"><div class="alert alert-info">Введите параметры поиска</div></td></tr>
+                            </tbody>
+        </table>
+            </div>
+</div>
+
+<script type="text/javascript">
+    jQuery(function ($) {
+        $('#contract_start_date_from').datepicker({language: 'ru'});
+        $('#contract_start_date_to').datepicker({language: 'ru'});
+
+        var fact_method = $('#f_method');
+        var plan_method = $('#f_os_method');
+        var plan_method_block = $('#os_method_block');
+
+        function display_os_block(reset) {
+            if(fact_method.val() === '6'){
+                plan_method_block.show();
+            } else {
+                plan_method_block.hide();
+                if(reset) {
+                    plan_method.val(0);
+                }
+            }
+        }
+
+        fact_method.change(function(){
+            display_os_block(true);
+        });
+
+        display_os_block(false);
+
+    });
+</script>
+</div>
+        <div class="clearfix"></div>
+        
+            </div>
+    <!-- END CONTAINER -->
+
+</div>
+<!-- END WRAP -->
+
+
+
+<!-- BEGIN FOOTER -->
+<footer class="footer">
+    <div class="container">
+        <p class="pull-left">
+            АИИС ЭГЗ © 2026 | <a href="https://www.minfin.gov.kz">Министерство финансов Республики Казахстан</a>
+        </p>
+        <p class="pull-right">
+            <span class="ecc">
+                <a href="https://ecc.kz">АО «Центр электронных финансов»</a>
+            </span>
+        </p>
+    </div>
+    <p class="text-center text-muted">
+        Техническая поддержка пользователей портала (7/7 с 08:00 до 20:00): 8(7172) 73 55 15, +7 705 956 53 88 (в соответствие с тарифами оператора связи), <a href="mailto:support@ecc.kz">support@ecc.kz</a>    </p>
+</footer>
+<!-- END FOOTER -->
+<div id="toast-container"></div>
+
+
+
+
+</body></html>

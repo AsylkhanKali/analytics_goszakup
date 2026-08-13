@@ -1,1 +1,1 @@
-worker: python bot.py
+worker: python setup_db.py && python bot.py

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика Госзакупок</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Goszakup Analytics</span>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="binInput" placeholder="Введите БИН/ИИН (12 цифр)" maxlength="12">
+                <button id="searchBtn" class="primary-btn"><i class="fa-solid fa-search"></i> Найти</button>
+            </div>
+
+            <div class="system-status">
+                <h3>Статус системы</h3>
+                <div class="status-item">
+                    <span>Авторизация v3bl:</span>
+                    <span id="authStatusIcon" class="icon-indicator">⏳</span>
+                </div>
+                <div class="status-item">
+                    <span>Договоров в базе:</span>
+                    <span id="contractsCount">-</span>
+                </div>
+                <div class="status-item">
+                    <span>Спецификаций:</span>
+                    <span id="specsCount">-</span>
+                </div>
+                <button id="openAuthBtn" class="secondary-btn small-btn">Настроить ci_session</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="welcomeState" class="state-container active">
+                <i class="fa-solid fa-magnifying-glass-chart empty-icon"></i>
+                <h2>Введите БИН или ИИН</h2>
+                <p>Получите мгновенную аналитику по договорам и товарам.</p>
+            </div>
+
+            <div id="loadingState" class="state-container">
+                <div class="spinner"></div>
+                <h2>Формирование отчета...</h2>
+                <p>Собираем данные по контрагенту</p>
+            </div>
+
+            <div id="errorState" class="state-container">
+                <i class="fa-solid fa-triangle-exclamation error-icon"></i>
+                <h2 id="errorTitle">Ошибка</h2>
+                <p id="errorMessage">Что-то пошло не так.</p>
+            </div>
+
+            <div id="resultState" class="state-container">
+                <div class="dashboard-header">
+                    <h1 id="companyName">Аналитика по БИН</h1>
+                    <div class="actions">
+                        <button id="syncBtn" class="secondary-btn"><i class="fa-solid fa-rotate-right"></i> Допрогрузить с портала</button>
+                        <button id="excelBtn" class="primary-btn"><i class="fa-solid fa-file-excel"></i> Скачать Excel</button>
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Всего договоров (шт)</div>
+                        <div class="kpi-value" id="kpiTotalCount">0</div>
+                    </div>
+                    <div class="kpi-card highlight">
+                        <div class="kpi-title">Сумма всех закупок</div>
+                        <div class="kpi-value" id="kpiTotalSum">0 ₸</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Договоров ОК (шт)</div>
+                        <div class="kpi-value" id="kpiOkSum">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Договоров ЗЦП (шт)</div>
+                        <div class="kpi-value" id="kpiZcpCount">0</div>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="contracts">Топ-10 Договоров</button>
+                    <button class="tab-btn" data-tab="specs">Спецификации и Марки</button>
+                    <button class="tab-btn" data-tab="counterparties">Контрагенты</button>
+                </div>
+
+                <div class="tab-content active" id="tab-contracts">
+                    <div class="table-container">
+                        <table id="contractsTable">
+                            <thead>
+                                <tr>
+                                    <th>№ Договора</th>
+                                    <th>Товар / Услуга</th>
+                                    <th>Способ</th>
+                                    <th>Поставщик/Заказчик</th>
+                                    <th class="text-right">Кол-во</th>
+                                    <th class="text-right">Цена за шт</th>
+                                    <th class="text-right">Сумма (₸)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Заполняется через JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-specs">
+                    <div class="table-container">
+                        <table id="specsTable">
+                            <thead>
+                                <tr>
+                                    <th>Товар</th>
+                                    <th>Марка / Модель</th>
+                                    <th>Страна</th>
+                                    <th>Завод</th>
+                                    <th>Контрагент</th>
+                                    <th class="text-right">Сумма (₸)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Заполняется через JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab-counterparties">
+                    <div class="roles-grid">
+                        <div class="role-card">
+                            <h3>Выступает как Поставщик</h3>
+                            <div class="kpi-mini">
+                                <span>Сумма:</span> <strong id="suppTotalSum">0 ₸</strong>
+                            </div>
+                            <div class="kpi-mini">
+                                <span>Договоров:</span> <strong id="suppTotalCount">0</strong>
+                            </div>
+                            <h4>Топ Заказчики:</h4>
+                            <ul class="counterparty-list" id="topCustomersList"></ul>
+                        </div>
+                        <div class="role-card">
+                            <h3>Выступает как Заказчик</h3>
+                            <div class="kpi-mini">
+                                <span>Сумма:</span> <strong id="custTotalSum">0 ₸</strong>
+                            </div>
+                            <div class="kpi-mini">
+                                <span>Договоров:</span> <strong id="custTotalCount">0</strong>
+                            </div>
+                            <h4>Топ Поставщики:</h4>
+                            <ul class="counterparty-list" id="topSuppliersList"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeAuthModal">&times;</span>
+            <h2>Настройка сессии (ci_session)</h2>
+            <p>Для выкачки закрытых спецификаций (Приложений 17) необходимо передать активную сессию с портала <code>v3bl.goszakup.gov.kz</code>.</p>
+            
+            <div class="form-group">
+                <label for="ciSessionInput">ci_session cookie:</label>
+                <input type="text" id="ciSessionInput" placeholder="Вставьте значение cookie ci_session">
+            </div>
+            
+            <button id="saveAuthBtn" class="primary-btn">Сохранить</button>
+            <p id="authModalMsg" class="modal-msg"></p>
+        </div>
+    </div>
+
+    <!-- Sync Modal -->
+    <div id="syncModal" class="modal">
+        <div class="modal-content text-center">
+            <div class="spinner"></div>
+            <h2 style="margin-top:20px;">Синхронизация...</h2>
+            <p>Идёт выкачка свежих договоров с портала Goszakup. Это может занять несколько десятков секунд.</p>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js?v=3"></script>
+</body>
+</html>

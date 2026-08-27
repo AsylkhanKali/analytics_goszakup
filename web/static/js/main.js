@@ -238,4 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial Status fetch
     fetchStatus();
+
+    // Uptime Robot (Keep-Alive): Ping backend every 10 minutes to prevent Render from sleeping
+    // while the user has this tab open.
+    setInterval(fetchStatus, 10 * 60 * 1000);
 });

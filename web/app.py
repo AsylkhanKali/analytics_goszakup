@@ -2,6 +2,7 @@ import asyncio
 import io
 import os
 import sqlite3
+import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
@@ -25,6 +26,18 @@ app = FastAPI(title="Goszakup Analytics Web")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
+
+STARTUP_TIME = datetime.datetime.now()
+
+@app.get("/health")
+def health_check():
+    uptime = datetime.datetime.now() - STARTUP_TIME
+    return {
+        "status": "ok",
+        "uptime_seconds": uptime.total_seconds(),
+        "uptime": str(uptime).split('.')[0],
+        "server_time": datetime.datetime.now().isoformat()
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
@@ -177,3 +190,66 @@ def authenticate(req: AuthRequest):
     save_session(req.ci_session.strip(), ua)
     active, status_msg = check_session_active()
     return {"active": active, "message": status_msg}
+
+# =========================================================================
+# WEEKLY DATABASE AUTO-UPDATE ENDPOINTS (RENDER & CRON SUPPORT)
+# =========================================================================
+from weekly_updater import run_weekly_update, get_sync_status, resolve_default_db, get_latest_contract_date
+from fastapi import BackgroundTasks, Query, Header
+
+SYNC_TOKEN = os.getenv("SYNC_SECRET_TOKEN", "goszakup_secret_2026")
+_CURRENT_SYNC_TASK = None
+
+@app.get("/api/sync/status")
+def sync_status_endpoint(db: str = Query(None, description="Custom database path")):
+    target_db = db if db else resolve_default_db()
+    return get_sync_status(target_db)
+
+@app.post("/api/sync/weekly")
+@app.get("/api/sync/weekly")
+async def trigger_weekly_sync(
+    background_tasks: BackgroundTasks,
+    token: str = Query(None),
+    x_sync_token: str = Header(None),
+    concurrency: int = Query(30, ge=1, le=50),
+    db: str = Query(None),
+    force_start: str = Query(None),
+    force_end: str = Query(None)
+):
+    # Optional security verification if token is configured
+    auth_token = token or x_sync_token
+    if os.getenv("REQUIRE_SYNC_TOKEN", "false").lower() in ("true", "1") and auth_token != SYNC_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized: invalid sync token")
+        
+    target_db = db if db else resolve_default_db()
+    status = get_sync_status(target_db)
+    
+    if status["is_sync_running"]:
+        return {
+            "status": "already_running",
+            "message": "A sync is already in progress",
+            "latest_contract_date": status["latest_contract_date"]
+        }
+        
+    latest_date = get_latest_contract_date(target_db)
+    start_date_str = force_start if force_start else (str(latest_date) if latest_date else "2024-01-01")
+    today_str = force_end if force_end else str(datetime.date.today())
+    
+    async def _async_sync_job():
+        await run_weekly_update(
+            db_path=target_db,
+            concurrency=concurrency,
+            force_start=force_start,
+            force_end=force_end
+        )
+        
+    background_tasks.add_task(asyncio.run, _async_sync_job())
+    
+    return {
+        "status": "started",
+        "message": f"Weekly sync started in background for database '{target_db}'",
+        "target_period": f"{start_date_str} -> {today_str}",
+        "latest_contract_in_db": str(latest_date) if latest_date else None,
+        "concurrency": concurrency
+    }
+

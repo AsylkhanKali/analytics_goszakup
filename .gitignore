@@ -26,3 +26,14 @@ __pycache__/
 ehthumbs.db
 Thumbs.db
 case/
+
+data/raw/
+data/tessdata/
+data/session.json
+out/
+data/techspec_manual/
+
+**/*.db
+**/*.sqlite
+**/*.log
+**/*.xlsx

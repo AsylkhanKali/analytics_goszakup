@@ -5,6 +5,11 @@
     --bg-surface: rgba(24, 24, 27, 0.65);
     --bg-surface-hover: rgba(39, 39, 42, 0.75);
     --bg-sidebar: rgba(15, 15, 17, 0.85);
+    --bg-overlay: rgba(0,0,0,0.3);
+    --bg-overlay-light: rgba(0,0,0,0.2);
+    --bg-overlay-dark: rgba(0,0,0,0.4);
+    --bg-modal: rgba(0,0,0,0.7);
+    --bg-table-hover: rgba(255,255,255,0.03);
     
     --accent-color: #3b82f6;
     --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
@@ -103,7 +108,7 @@ p { color: var(--text-secondary); }
 }
 
 .search-box input {
-    background: rgba(0,0,0,0.3);
+    background: var(--bg-overlay);
     border: 1px solid var(--border-subtle);
     color: var(--text-primary);
     padding: 14px 16px;
@@ -161,7 +166,7 @@ p { color: var(--text-secondary); }
 
 /* System Status */
 .system-status {
-    background: rgba(0,0,0,0.3);
+    background: var(--bg-overlay);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 20px;
@@ -331,7 +336,7 @@ p { color: var(--text-secondary); }
 .tabs-nav {
     display: flex;
     gap: 6px;
-    background: rgba(0,0,0,0.3);
+    background: var(--bg-overlay);
     padding: 6px;
     border-radius: var(--radius-md);
     margin-bottom: 24px;
@@ -383,7 +388,7 @@ table {
     text-align: left;
 }
 th {
-    background: rgba(0,0,0,0.3);
+    background: var(--bg-overlay);
     padding: 18px 20px;
     font-weight: 600;
     font-size: 0.8rem;
@@ -400,10 +405,10 @@ td {
 }
 tr:last-child td { border-bottom: none; }
 tr:hover td {
-    background: rgba(255,255,255,0.03);
+    background: var(--bg-table-hover);
 }
 td code {
-    background: rgba(0,0,0,0.4);
+    background: var(--bg-overlay-dark);
     border: 1px solid var(--border-subtle);
     padding: 4px 8px;
     border-radius: 6px;
@@ -481,13 +486,13 @@ td code {
     align-items: center;
     gap: 16px;
     padding: 14px 16px;
-    background: rgba(0,0,0,0.2);
+    background: var(--bg-overlay-light);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     transition: var(--transition);
 }
 .cp-list li:hover {
-    background: rgba(0,0,0,0.3);
+    background: var(--bg-overlay);
     border-color: var(--border-highlight);
 }
 .cp-list li span {
@@ -504,7 +509,7 @@ td code {
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.7);
+    background: var(--bg-modal);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     z-index: 100;
@@ -557,7 +562,7 @@ td code {
 }
 .form-group input {
     width: 100%;
-    background: rgba(0,0,0,0.3);
+    background: var(--bg-overlay);
     border: 1px solid var(--border-subtle);
     color: var(--text-primary);
     padding: 14px 16px;
@@ -585,6 +590,11 @@ td code {
     --bg-surface: rgba(255, 255, 255, 0.9);
     --bg-surface-hover: rgba(248, 250, 252, 1);
     --bg-sidebar: rgba(255, 255, 255, 0.95);
+    --bg-overlay: rgba(0,0,0,0.04);
+    --bg-overlay-light: rgba(0,0,0,0.02);
+    --bg-overlay-dark: rgba(0,0,0,0.08);
+    --bg-modal: rgba(255,255,255,0.7);
+    --bg-table-hover: rgba(0,0,0,0.02);
     
     --accent-color: #2563eb;
     --accent-gradient: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);

@@ -100,8 +100,8 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
     cur.execute(
         f"""
         SELECT 
-            COUNT(DISTINCT CASE WHEN c.purchase_method = 'ОК' THEN c.contract_number END),
-            COUNT(DISTINCT CASE WHEN c.purchase_method = 'ЗЦП' THEN c.contract_number END)
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Открытый конкурс%' THEN c.contract_number END),
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Запрос ценовых предложений%' THEN c.contract_number END)
         FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
@@ -246,8 +246,8 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
     cur.execute(
         f"""
         SELECT 
-            COUNT(DISTINCT CASE WHEN c.purchase_method = 'ОК' THEN c.contract_number END),
-            COUNT(DISTINCT CASE WHEN c.purchase_method = 'ЗЦП' THEN c.contract_number END)
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Открытый конкурс%' THEN c.contract_number END),
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Запрос ценовых предложений%' THEN c.contract_number END)
         FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,

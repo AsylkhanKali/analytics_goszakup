@@ -34,7 +34,7 @@ def generate_bin_excel(con: sqlite3.Connection, bin_code: str) -> io.BytesIO:
         COALESCE(NULLIF(c.brand_model, ''), 'Нет данных') as "Марка / Модель",
         COALESCE(NULLIF(c.country, ''), 'Нет данных') as "Страна происхождения",
         COALESCE(NULLIF(c.manufacturer, ''), 'Нет данных') as "Завод-изготовитель"
-    FROM contracts c
+    FROM contracts_lots c
     WHERE c.supplier_bin = ?
       AND LOWER(c.contract_status) NOT LIKE '%расторгнут%'
       AND LOWER(c.contract_status) NOT LIKE '%не заключен%'
@@ -63,7 +63,7 @@ def generate_bin_excel(con: sqlite3.Connection, bin_code: str) -> io.BytesIO:
         COALESCE(NULLIF(c.brand_model, ''), 'Нет данных') as "Марка / Модель",
         COALESCE(NULLIF(c.country, ''), 'Нет данных') as "Страна происхождения",
         COALESCE(NULLIF(c.manufacturer, ''), 'Нет данных') as "Завод-изготовитель"
-    FROM contracts c
+    FROM contracts_lots c
     WHERE (c.customer_bin = ? OR c.contract_number LIKE ? || '/%')
       AND LOWER(c.contract_status) NOT LIKE '%расторгнут%'
       AND LOWER(c.contract_status) NOT LIKE '%не заключен%'

@@ -96,19 +96,20 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         r_name = cur.fetchone()
         supplier_name = r_name[0] if r_name else f"Поставщик БИН {bin_code}"
 
-    # Разбивка по способам закупки (ОК vs ЗЦП)
+    # Разбивка по способам закупки (ОК vs ЗЦП vs ОИ)
     cur.execute(
         f"""
         SELECT 
             COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Открытый конкурс%' THEN c.contract_number END),
-            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Запрос ценовых предложений%' THEN c.contract_number END)
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Запрос ценовых предложений%' THEN c.contract_number END),
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Из одного источника%' THEN c.contract_number END)
         FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
         (bin_code,),
     )
     r_meth = cur.fetchone()
-    open_cnt, zcp_cnt = r_meth if r_meth else (0, 0)
+    open_cnt, zcp_cnt, oi_cnt = r_meth if r_meth else (0, 0, 0)
 
     # ТОП поставляемых товаров (с ценой за штуку и количеством)
     cur.execute(
@@ -209,6 +210,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         "total_amount": float(total_amount),
         "open_tender_contracts": open_cnt,
         "zcp_contracts": zcp_cnt,
+        "oi_contracts": oi_cnt,
         "top_products": top_products,
         "counterparties": counterparties,
         "specs": specs,
@@ -242,19 +244,20 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         r_name = cur.fetchone()
         customer_name = r_name[0] if r_name else f"Заказчик БИН {bin_code}"
 
-    # Разбивка по способам закупки (ОК vs ЗЦП)
+    # Разбивка по способам закупки (ОК vs ЗЦП vs ОИ)
     cur.execute(
         f"""
         SELECT 
             COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Открытый конкурс%' THEN c.contract_number END),
-            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Запрос ценовых предложений%' THEN c.contract_number END)
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Запрос ценовых предложений%' THEN c.contract_number END),
+            COUNT(DISTINCT CASE WHEN c.purchase_method LIKE '%Из одного источника%' THEN c.contract_number END)
         FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
         (bin_code,),
     )
     r_meth = cur.fetchone()
-    open_cnt, zcp_cnt = r_meth if r_meth else (0, 0)
+    open_cnt, zcp_cnt, oi_cnt = r_meth if r_meth else (0, 0, 0)
 
     # ТОП закупаемых товаров
     cur.execute(
@@ -338,6 +341,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         "total_amount": float(total_amount),
         "open_tender_contracts": open_cnt,
         "zcp_contracts": zcp_cnt,
+        "oi_contracts": oi_cnt,
         "top_products": top_products,
         "counterparties": counterparties,
         "specs": specs,
@@ -382,6 +386,7 @@ def format_telegram_report(data: Dict[str, Any]) -> str:
         lines.append(f"📜 *Всего Договоров:* `{sup['total_contracts']:,}` *(Лотов: {sup['total_lots']:,})*".replace(",", " "))
         lines.append(f"🏆 *Открытый конкурс (ОК):* `{sup['open_tender_contracts']:,}` Договоров".replace(",", " "))
         lines.append(f"⚡ *Запрос ценовых предложений (ЗЦП):* `{sup['zcp_contracts']:,}` Договоров".replace(",", " "))
+        lines.append(f"👤 *Из одного источника (ОИ):* `{sup['oi_contracts']:,}` Договоров".replace(",", " "))
         lines.append(f"💰 *Общая сумма поставок:* `{format_currency(sup['total_amount'])}`")
 
         if sup.get("top_products"):
@@ -410,6 +415,7 @@ def format_telegram_report(data: Dict[str, Any]) -> str:
         lines.append(f"📜 *Всего Договоров:* `{cust['total_contracts']:,}` *(Лотов: {cust['total_lots']:,})*".replace(",", " "))
         lines.append(f"🏆 *Открытый конкурс (ОК):* `{cust['open_tender_contracts']:,}` Договоров".replace(",", " "))
         lines.append(f"⚡ *Запрос ценовых предложений (ЗЦП):* `{cust['zcp_contracts']:,}` Договоров".replace(",", " "))
+        lines.append(f"👤 *Из одного источника (ОИ):* `{cust['oi_contracts']:,}` Договоров".replace(",", " "))
         lines.append(f"💰 *Общий бюджет закупок:* `{format_currency(cust['total_amount'])}`")
 
         if cust.get("top_products"):

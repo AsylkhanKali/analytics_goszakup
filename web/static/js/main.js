@@ -46,7 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Load Analytics Overview
             const res = await fetch(`/api/analytics/${currentBin}`);
-            if (!res.ok) throw new Error("Контрагент не найден или ошибка сервера.");
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.detail || "Контрагент не найден или ошибка сервера.");
+            }
             const data = await res.json();
             
             if (data.error) {
@@ -63,12 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalAmount = (sup.total_amount || 0) + (cust.total_amount || 0);
             const okCount = (sup.open_tender_contracts || 0) + (cust.open_tender_contracts || 0);
             const zcpCount = (sup.zcp_contracts || 0) + (cust.zcp_contracts || 0);
+            const oiCount = (sup.oi_contracts || 0) + (cust.oi_contracts || 0);
             
             // KPIs
             document.getElementById('kpiTotalCount').textContent = totalContracts;
             document.getElementById('kpiTotalSum').textContent = formatCurrency(totalAmount) + ' ₸';
             document.getElementById('kpiOkSum').textContent = okCount;
             document.getElementById('kpiZcpCount').textContent = zcpCount;
+            document.getElementById('kpiOiCount').textContent = oiCount;
 
             // Counterparties Tab
             // Supplier

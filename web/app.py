@@ -78,12 +78,16 @@ async def read_index():
 def get_analytics(bin_code: str):
     if len(bin_code) != 12 or not bin_code.isdigit():
         raise HTTPException(status_code=400, detail="Invalid BIN/IIN")
-    con = connect()
     try:
-        analytics = get_bin_analytics(con, bin_code)
-        return analytics
-    finally:
-        con.close()
+        con = connect()
+        try:
+            analytics = get_bin_analytics(con, bin_code)
+            return analytics
+        finally:
+            con.close()
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=500, detail=f"Database error: {e}\n{traceback.format_exc()}")
 
 @app.get("/api/contracts/{bin_code}")
 def get_contracts(bin_code: str):
@@ -193,23 +197,31 @@ def download_excel(bin_code: str):
 
 @app.get("/api/status")
 def get_status():
-    active, status_msg = check_session_active()
-    con = connect()
     try:
+        active, status_msg = check_session_active()
+        con = connect()
         try:
-            specs_cnt = con.execute("SELECT COUNT(*) FROM supplier_specs").fetchone()[0]
-        except sqlite3.OperationalError:
-            specs_cnt = 0
-        contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
-    finally:
-        con.close()
-        
-    return {
-        "active": active,
-        "message": status_msg,
-        "contracts_count": contracts_cnt,
-        "specs_count": specs_cnt
-    }
+            try:
+                specs_cnt = con.execute("SELECT COUNT(*) FROM supplier_specs").fetchone()[0]
+            except sqlite3.OperationalError:
+                specs_cnt = 0
+            contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
+        finally:
+            con.close()
+            
+        return {
+            "active": active,
+            "message": status_msg,
+            "contracts_count": contracts_cnt,
+            "specs_count": specs_cnt
+        }
+    except Exception as e:
+        return {
+            "active": False,
+            "message": f"Error: {e}\n{traceback.format_exc()}",
+            "contracts_count": 0,
+            "specs_count": 0
+        }
 
 class AuthRequest(BaseModel):
     ci_session: str

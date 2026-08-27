@@ -190,12 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Auth Modal
-    document.getElementById('closeAuthModal').addEventListener('click', () => {
-
-    document.getElementById('saveAuthBtn').addEventListener('click', async () => {
-        const session = document.getElementById('ciSessionInput').value;
-
     // Excel
     document.getElementById('excelBtn').addEventListener('click', () => {
         if (currentBin) {
@@ -225,4 +219,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Uptime Robot (Keep-Alive): Ping backend every 10 minutes to prevent Render from sleeping
     // while the user has this tab open.
     setInterval(fetchStatus, 10 * 60 * 1000);
+});
+
+// Theme Toggle
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+let isLight = localStorage.getItem('theme') === 'light';
+
+function updateTheme() {
+    if (isLight) {
+        document.body.setAttribute('data-theme', 'light');
+        themeToggleBtn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+    } else {
+        document.body.removeAttribute('data-theme');
+        themeToggleBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    }
+}
+
+updateTheme();
+themeToggleBtn.addEventListener('click', () => {
+    isLight = !isLight;
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    updateTheme();
 });

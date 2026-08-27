@@ -579,3 +579,24 @@ td code {
     border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+[data-theme="light"] {
+    --bg-base: #f1f5f9;
+    --bg-surface: rgba(255, 255, 255, 0.9);
+    --bg-surface-hover: rgba(248, 250, 252, 1);
+    --bg-sidebar: rgba(255, 255, 255, 0.95);
+    
+    --accent-color: #2563eb;
+    --accent-gradient: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);
+    --accent-glow: rgba(37, 99, 235, 0.3);
+    
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    
+    --border-subtle: rgba(0, 0, 0, 0.1);
+    --border-highlight: rgba(0, 0, 0, 0.2);
+    
+    --shadow-soft: 0 8px 30px rgba(0,0,0,0.06);
+    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.15);
+}

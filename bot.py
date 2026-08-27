@@ -130,7 +130,7 @@ async def status_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     active, status_msg = check_session_active()
     con = connect()
     specs_cnt = con.execute("SELECT COUNT(*) FROM supplier_specs").fetchone()[0]
-    contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts_lots WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
+    contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts_lots c WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
     con.close()
 
     status_icon = "🟢" if active else "🔴"

@@ -205,7 +205,7 @@ def get_status():
                 specs_cnt = con.execute("SELECT COUNT(*) FROM supplier_specs").fetchone()[0]
             except sqlite3.OperationalError:
                 specs_cnt = 0
-            contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts_lots WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
+            contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts_lots c WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
         finally:
             con.close()
             

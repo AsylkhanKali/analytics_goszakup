@@ -23,23 +23,18 @@
                 <button id="searchBtn" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Искать</button>
             </div>
 
-            <div class="system-status">
-                <h3><i class="fa-solid fa-server"></i> Состояние системы</h3>
-                <div class="status-item">
-                    <span>Сессия портала:</span>
-                    <span id="authStatusIcon" class="indicator">⏳</span>
+            <div class="sidebar-box">
+                <div class="box-title"><i class="fa-solid fa-server"></i> СОСТОЯНИЕ СИСТЕМЫ</div>
+                <div class="box-content">
+                    <div class="status-row">
+                        <span>Договоров:</span>
+                        <strong id="dbContractsCount">0</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>Спецификаций:</span>
+                        <strong id="dbSpecsCount">0</strong>
+                    </div>
                 </div>
-                <div class="status-item">
-                    <span>Договоров:</span>
-                    <span id="contractsCount">-</span>
-                </div>
-                <div class="status-item">
-                    <span>Спецификаций:</span>
-                    <span id="specsCount">-</span>
-                </div>
-                <button id="openAuthBtn" class="btn btn-secondary btn-sm" style="margin-top: 8px;">
-                    <i class="fa-solid fa-key"></i> Настроить ci_session
-                </button>
             </div>
         </aside>
 
@@ -183,31 +178,3 @@
     </div>
 
     <!-- Auth Modal -->
-    <div id="authModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" id="closeAuthModal">&times;</span>
-            <h2><i class="fa-solid fa-key" style="color:var(--accent-color);"></i> Настройка сессии</h2>
-            <p>Для фоновой выкачки закрытых спецификаций (Приложений 17) необходимо передать активную сессию с портала <code>v3bl.goszakup.gov.kz</code>.</p>
-            
-            <div class="form-group">
-                <label for="ciSessionInput">Значение Cookie <code>ci_session</code>:</label>
-                <input type="text" id="ciSessionInput" placeholder="Вставьте длинный хеш сессии...">
-            </div>
-            
-            <button id="saveAuthBtn" class="btn btn-primary" style="width:100%;"><i class="fa-solid fa-check"></i> Сохранить и применить</button>
-            <p id="authModalMsg" class="modal-msg"></p>
-        </div>
-    </div>
-
-    <!-- Sync Modal -->
-    <div id="syncModal" class="modal">
-        <div class="modal-content text-center" style="max-width:400px;">
-            <div class="spinner" style="margin: 0 auto 20px;"></div>
-            <h2>Синхронизация...</h2>
-            <p>Идёт выкачка свежих договоров напрямую с портала Goszakup. Пожалуйста, подождите.</p>
-        </div>
-    </div>
-
-    <script src="/static/js/main.js?v=4"></script>
-</body>
-</html>

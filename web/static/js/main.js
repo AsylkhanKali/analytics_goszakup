@@ -26,9 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/status');
             const data = await res.json();
-            document.getElementById('authStatusIcon').textContent = data.active ? '🟢' : '🔴';
-            document.getElementById('contractsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.contracts_count);
-            document.getElementById('specsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.specs_count);
+            document.getElementById('dbContractsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.contracts_count);
+            document.getElementById('dbSpecsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.specs_count);
         } catch (e) {
             console.error(e);
         }
@@ -192,40 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Auth Modal
-    const authModal = document.getElementById('authModal');
-    document.getElementById('openAuthBtn').addEventListener('click', () => {
-        authModal.classList.add('active');
-        document.getElementById('authModalMsg').textContent = '';
-    });
     document.getElementById('closeAuthModal').addEventListener('click', () => {
-        authModal.classList.remove('active');
-    });
 
     document.getElementById('saveAuthBtn').addEventListener('click', async () => {
         const session = document.getElementById('ciSessionInput').value;
-        const msgEl = document.getElementById('authModalMsg');
-        msgEl.textContent = 'Проверка...';
-        
-        try {
-            const res = await fetch('/api/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ci_session: session })
-            });
-            const data = await res.json();
-            if (data.active) {
-                msgEl.style.color = 'var(--accent)';
-                msgEl.textContent = 'Успешно сохранено и активно!';
-                fetchStatus();
-                setTimeout(() => authModal.classList.remove('active'), 1500);
-            } else {
-                msgEl.style.color = 'var(--danger)';
-                msgEl.textContent = 'Ошибка: ' + data.message;
-            }
-        } catch (e) {
-            msgEl.textContent = e.message;
-        }
-    });
 
     // Excel
     document.getElementById('excelBtn').addEventListener('click', () => {

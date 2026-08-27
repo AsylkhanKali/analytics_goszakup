@@ -27,6 +27,20 @@ app = FastAPI(title="Goszakup Analytics Web")
 # Mount static files
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
+import subprocess
+import sys
+import threading
+
+def run_db_setup():
+    try:
+        print("Running setup_db.py in background...")
+        subprocess.run([sys.executable, "setup_db.py"], check=False)
+        print("setup_db.py background setup finished.")
+    except Exception as e:
+        print(f"Failed to run setup_db.py: {e}")
+
+threading.Thread(target=run_db_setup, daemon=True).start()
+
 STARTUP_TIME = datetime.datetime.now()
 
 @app.get("/health")

@@ -185,6 +185,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         if data.startswith("contracts_"):
             bin_code = data.replace("contracts_", "")
             cur = con.cursor()
+            if len(bin_code) == 12 and bin_code.isdigit():
+                where_clause = "(c.supplier_bin = ? OR c.customer_bin = ?)"
+                params = (bin_code, bin_code)
+            else:
+                where_clause = "c.contract_number LIKE ? || '%'"
+                params = (bin_code,)
+
             cur.execute(
                 f"""
                 SELECT 
@@ -193,11 +200,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     c.lot_title, COALESCE(c.quantity, 1) as qty, COALESCE(c.unit_price, 0) as u_price,
                     COALESCE(c.purchase_method, 'ОК') as p_meth
                 FROM contracts_lots c
-                WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
+                WHERE {where_clause}
                   AND {EXCLUDE_STATUSES_SQL}
                 ORDER BY c.contract_amount DESC LIMIT 10
                 """,
-                (bin_code, bin_code, bin_code),
+                params,
             )
             rows = cur.fetchall()
             if not rows:
@@ -238,6 +245,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         elif data.startswith("specs_"):
             bin_code = data.replace("specs_", "")
             cur = con.cursor()
+            if len(bin_code) == 12 and bin_code.isdigit():
+                where_clause = "(c.supplier_bin = ? OR c.customer_bin = ?)"
+                params = (bin_code, bin_code)
+            else:
+                where_clause = "c.contract_number LIKE ? || '%'"
+                params = (bin_code,)
+
             cur.execute(
                 f"""
                 SELECT 
@@ -249,12 +263,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     c.manufacturer as manufacturer,
                     c.customer_name, c.customer_bin, c.supplier_name, c.supplier_bin
                 FROM contracts_lots c
-                WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
+                WHERE {where_clause}
                   AND {EXCLUDE_STATUSES_SQL}
                   AND (c.brand_model != '' OR c.country != '' OR c.manufacturer != '')
                 LIMIT 10
                 """,
-                (bin_code, bin_code, bin_code),
+                params,
             )
             rows = cur.fetchall()
             if not rows:
@@ -308,9 +322,16 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             )
 
             cur = con.cursor()
+            if len(bin_code) == 12 and bin_code.isdigit():
+                where_clause = "(supplier_bin = ? OR customer_bin = ?)"
+                params = (bin_code, bin_code)
+            else:
+                where_clause = "contract_number LIKE ? || '%'"
+                params = (bin_code,)
+
             cur.execute(
-                f"SELECT DISTINCT contract_id FROM contracts_lots WHERE (supplier_bin = ? OR customer_bin = ? OR contract_number LIKE ? || '%') AND {EXCLUDE_STATUSES_SQL} AND contract_id IS NOT NULL LIMIT 15",
-                (bin_code, bin_code, bin_code),
+                f"SELECT DISTINCT contract_id FROM contracts_lots WHERE {where_clause} AND {EXCLUDE_STATUSES_SQL} AND contract_id IS NOT NULL LIMIT 15",
+                params,
             )
             cids = [r[0] for r in cur.fetchall()]
 

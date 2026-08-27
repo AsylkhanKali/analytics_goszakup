@@ -120,6 +120,14 @@ def get_contracts(bin_code: str):
     con = connect()
     try:
         cur = con.cursor()
+        
+        if len(bin_code) == 12 and bin_code.isdigit():
+            where_clause = "(c.supplier_bin = ? OR c.customer_bin = ?)"
+            params = (bin_code, bin_code)
+        else:
+            where_clause = "c.contract_number LIKE ? || '%'"
+            params = (bin_code,)
+
         cur.execute(
             f"""
             SELECT 
@@ -128,11 +136,11 @@ def get_contracts(bin_code: str):
                 c.lot_title, COALESCE(c.quantity, 1) as qty, COALESCE(c.unit_price, 0) as u_price,
                 COALESCE(c.purchase_method, 'ОК') as p_meth
             FROM contracts_lots c
-            WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
+            WHERE {where_clause}
               AND {EXCLUDE_STATUSES_SQL}
             ORDER BY c.contract_amount DESC LIMIT 10
             """,
-            (bin_code, bin_code, bin_code),
+            params,
         )
         rows = cur.fetchall()
         
@@ -160,6 +168,14 @@ def get_specs(bin_code: str):
     con = connect()
     try:
         cur = con.cursor()
+
+        if len(bin_code) == 12 and bin_code.isdigit():
+            where_clause = "(c.supplier_bin = ? OR c.customer_bin = ?)"
+            params = (bin_code, bin_code)
+        else:
+            where_clause = "c.contract_number LIKE ? || '%'"
+            params = (bin_code,)
+
         cur.execute(
             f"""
             SELECT 
@@ -171,12 +187,12 @@ def get_specs(bin_code: str):
                 c.manufacturer as manufacturer,
                 c.customer_name, c.customer_bin, c.supplier_name, c.supplier_bin
             FROM contracts_lots c
-            WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
+            WHERE {where_clause}
               AND {EXCLUDE_STATUSES_SQL}
               AND (c.brand_model != '' OR c.country != '' OR c.manufacturer != '')
-            ORDER BY c.contract_amount DESC LIMIT 10
+            ORDER BY c.contract_amount DESC LIMIT 20
             """,
-            (bin_code, bin_code, bin_code),
+            params,
         )
         rows = cur.fetchall()
         specs = []

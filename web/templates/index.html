@@ -12,9 +12,14 @@
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="brand">
-                <i class="fa-solid fa-chart-line"></i>
-                <span>Analytics Pro</span>
+            <div class="brand" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Analytics Pro</span>
+                </div>
+                <button id="themeToggleBtn" class="btn btn-secondary btn-sm" style="padding: 4px 8px; border-radius: var(--radius-sm);" title="Переключить тему">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
             </div>
             
             <div class="search-box">
@@ -23,17 +28,19 @@
                 <button id="searchBtn" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Искать</button>
             </div>
 
-            <div class="sidebar-box">
-                <div class="box-title"><i class="fa-solid fa-server"></i> СОСТОЯНИЕ СИСТЕМЫ</div>
-                <div class="box-content">
-                    <div class="status-row">
-                        <span>Договоров:</span>
-                        <strong id="dbContractsCount">0</strong>
-                    </div>
-                    <div class="status-row">
-                        <span>Спецификаций:</span>
-                        <strong id="dbSpecsCount">0</strong>
-                    </div>
+            <div class="system-status">
+                <h3><i class="fa-solid fa-server"></i> Состояние системы</h3>
+                <div class="status-item">
+                    <span>Сессия портала:</span>
+                    <span id="authStatusIcon" class="indicator">⏳</span>
+                </div>
+                <div class="status-item">
+                    <span>Договоров:</span>
+                    <span id="contractsCount">-</span>
+                </div>
+                <div class="status-item">
+                    <span>Спецификаций:</span>
+                    <span id="specsCount">-</span>
                 </div>
             </div>
         </aside>
@@ -72,7 +79,6 @@
                         <div id="roleBadges" style="margin-top: 12px; font-size: 0.9rem; font-weight: 500;"></div>
                     </div>
                     <div class="header-actions">
-                        <button id="themeToggleBtn" class="btn btn-secondary" title="Переключить тему"><i class="fa-solid fa-moon"></i></button>
                         <button id="syncBtn" class="btn btn-secondary"><i class="fa-solid fa-cloud-arrow-down"></i> Допрогрузить</button>
                         <button id="excelBtn" class="btn btn-primary"><i class="fa-solid fa-file-excel"></i> Экспорт в Excel</button>
                     </div>
@@ -178,4 +184,15 @@
         </main>
     </div>
 
-    <!-- Auth Modal -->
+    <!-- Sync Modal -->
+    <div id="syncModal" class="modal">
+        <div class="modal-content text-center" style="max-width:400px;">
+            <div class="spinner" style="margin: 0 auto 20px;"></div>
+            <h2>Синхронизация...</h2>
+            <p>Идёт выкачка свежих договоров напрямую с портала Goszakup. Пожалуйста, подождите.</p>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js?v=4"></script>
+</body>
+</html>

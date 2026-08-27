@@ -26,8 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/status');
             const data = await res.json();
-            document.getElementById('dbContractsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.contracts_count);
-            document.getElementById('dbSpecsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.specs_count);
+            document.getElementById('authStatusIcon').textContent = '🟢';
+            document.getElementById('contractsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.contracts_count);
+            document.getElementById('specsCount').textContent = new Intl.NumberFormat('ru-RU').format(data.specs_count);
         } catch (e) {
             console.error(e);
         }
@@ -190,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+
     // Excel
     document.getElementById('excelBtn').addEventListener('click', () => {
         if (currentBin) {
@@ -219,25 +221,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Uptime Robot (Keep-Alive): Ping backend every 10 minutes to prevent Render from sleeping
     // while the user has this tab open.
     setInterval(fetchStatus, 10 * 60 * 1000);
-});
 
-// Theme Toggle
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-let isLight = localStorage.getItem('theme') === 'light';
-
-function updateTheme() {
-    if (isLight) {
-        document.body.setAttribute('data-theme', 'light');
-        themeToggleBtn.innerHTML = '<i class="fa-solid fa-sun"></i>';
-    } else {
-        document.body.removeAttribute('data-theme');
-        themeToggleBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    // Theme Toggle
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    let isLight = localStorage.getItem('theme') === 'light';
+    
+    function updateTheme() {
+        if (isLight) {
+            document.body.setAttribute('data-theme', 'light');
+            themeToggleBtn.innerHTML = '<i class="fa-solid fa-sun"></i>';
+        } else {
+            document.body.removeAttribute('data-theme');
+            themeToggleBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+        }
     }
-}
-
-updateTheme();
-themeToggleBtn.addEventListener('click', () => {
-    isLight = !isLight;
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    
     updateTheme();
+    themeToggleBtn.addEventListener('click', () => {
+        isLight = !isLight;
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        updateTheme();
+    });
 });

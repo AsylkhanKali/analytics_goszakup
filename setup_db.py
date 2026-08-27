@@ -1,9 +1,10 @@
 import os
-import gzip
 import shutil
+import subprocess
 from pathlib import Path
 
 db_path = Path("data/goszakup.db")
+db_path_tmp = Path("data/goszakup.db.tmp")
 db_gz_path = Path("db_parts/goszakup.db.gz")
 
 parts = sorted(Path("db_parts").glob("goszakup.db.gz.part_*"))
@@ -11,41 +12,48 @@ parts = sorted(Path("db_parts").glob("goszakup.db.gz.part_*"))
 if parts:
     print(f"Found {len(parts)} parts.")
     
-    if db_path.exists() and db_path.stat().st_size > 100_000_000:
+    if db_path.exists() and db_path.stat().st_size > 4_000_000_000:
         print(f"Database {db_path} already exists (size: {db_path.stat().st_size} bytes). Skipping decompression.")
     else:
-        print(f"Reassembling and decompressing to {db_path}...")
-        
+        print(f"Streaming decompression from parts directly to {db_path_tmp}...")
         Path("data").mkdir(parents=True, exist_ok=True)
-        temp_gz = Path("data/temp.gz")
         
-        with open(temp_gz, 'wb') as f_out:
-            for part in parts:
-                with open(part, 'rb') as f_in:
-                    shutil.copyfileobj(f_in, f_out)
-                    
-        print("Reassembly complete. Decompressing...")
+        # We can use cat and zcat to stream it directly and save disk space
+        # cat db_parts/goszakup.db.gz.part_* | zcat > data/goszakup.db.tmp
+        parts_str = " ".join([f'"{p}"' for p in parts])
+        cmd = f"cat {parts_str} | gzip -d -c > {db_path_tmp}"
         
-        if db_path.exists():
-            db_path.unlink()
-        if Path(str(db_path) + "-wal").exists():
-            Path(str(db_path) + "-wal").unlink()
-        if Path(str(db_path) + "-shm").exists():
-            Path(str(db_path) + "-shm").unlink()
+        try:
+            subprocess.run(cmd, shell=True, check=True)
+            print("Decompression successful! Renaming to final db path...")
             
-        with gzip.open(temp_gz, 'rb') as f_in:
-            with open(db_path, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
+            # Atomic replace
+            os.replace(db_path_tmp, db_path)
+            
+            # Clean up WAL/SHM just in case
+            if Path(str(db_path) + "-wal").exists():
+                Path(str(db_path) + "-wal").unlink()
+            if Path(str(db_path) + "-shm").exists():
+                Path(str(db_path) + "-shm").unlink()
                 
-        temp_gz.unlink()
-        print("Database forcefully decompressed and updated successfully.")
+            print("Database updated successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Extraction failed: {e}")
+            if db_path_tmp.exists():
+                db_path_tmp.unlink()
+            
 elif db_gz_path.exists():
     if not db_path.exists() or db_gz_path.stat().st_mtime > db_path.stat().st_mtime:
-        print(f"Decompressing {db_gz_path} to {db_path}...")
-        with gzip.open(db_gz_path, 'rb') as f_in:
-            with open(db_path, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        print("Database decompressed successfully.")
+        print(f"Decompressing {db_gz_path} to {db_path_tmp}...")
+        try:
+            cmd = f"gzip -d -c {db_gz_path} > {db_path_tmp}"
+            subprocess.run(cmd, shell=True, check=True)
+            os.replace(db_path_tmp, db_path)
+            print("Database decompressed successfully.")
+        except subprocess.CalledProcessError as e:
+            print(f"Extraction failed: {e}")
+            if db_path_tmp.exists():
+                db_path_tmp.unlink()
     else:
         print("Database already exists and is up to date.")
 else:

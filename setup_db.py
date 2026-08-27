@@ -20,6 +20,15 @@ if parts:
                 shutil.copyfileobj(f_in, f_out)
                 
     print("Reassembly complete. Decompressing...")
+    
+    # Delete WAL files to prevent corruption since we are replacing the DB file
+    if db_path.exists():
+        db_path.unlink()
+    if Path(str(db_path) + "-wal").exists():
+        Path(str(db_path) + "-wal").unlink()
+    if Path(str(db_path) + "-shm").exists():
+        Path(str(db_path) + "-shm").unlink()
+        
     with gzip.open(temp_gz, 'rb') as f_in:
         with open(db_path, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)

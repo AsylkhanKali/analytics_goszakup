@@ -1,0 +1,24 @@
+name: Weekly Goszakup Database Sync
+
+on:
+  schedule:
+    # Every Sunday at 23:00 (19:00 UTC)
+    - cron: '0 19 * * 0'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Webhook Sync
+        env:
+          RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
+          SYNC_SECRET_TOKEN: ${{ secrets.SYNC_SECRET_TOKEN }}
+        run: |
+          if [ -n "$RENDER_APP_URL" ]; then
+            echo "Triggering weekly sync webhook at $RENDER_APP_URL/api/sync/weekly..."
+            curl -s -X POST "$RENDER_APP_URL/api/sync/weekly" \
+                 -H "X-Sync-Token: $SYNC_SECRET_TOKEN"
+          else
+            echo "RENDER_APP_URL secret is not set. Skipping webhook trigger."
+          fi

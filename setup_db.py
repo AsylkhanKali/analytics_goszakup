@@ -4,9 +4,9 @@ import shutil
 from pathlib import Path
 
 db_path = Path("data/goszakup.db")
-db_gz_path = Path("data/goszakup.db.gz")
+db_gz_path = Path("db_parts/goszakup.db.gz")
 
-parts = sorted(Path("data").glob("goszakup.db.gz.part_*"))
+parts = sorted(Path("db_parts").glob("goszakup.db.gz.part_*"))
 
 if parts:
     print(f"Found {len(parts)} parts. Reassembling and decompressing to {db_path} (Forced Update)...")

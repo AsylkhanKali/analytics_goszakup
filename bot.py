@@ -130,7 +130,7 @@ async def status_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     active, status_msg = check_session_active()
     con = connect()
     specs_cnt = con.execute("SELECT COUNT(*) FROM supplier_specs").fetchone()[0]
-    contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
+    contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts_lots WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
     con.close()
 
     status_icon = "🟢" if active else "🔴"
@@ -192,7 +192,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     c.supplier_name, c.supplier_bin, c.customer_name, c.customer_bin,
                     c.lot_title, COALESCE(c.quantity, 1) as qty, COALESCE(c.unit_price, 0) as u_price,
                     COALESCE(c.purchase_method, 'ОК') as p_meth
-                FROM contracts c
+                FROM contracts_lots c
                 WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
                   AND {EXCLUDE_STATUSES_SQL}
                 ORDER BY c.contract_amount DESC LIMIT 10
@@ -248,7 +248,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     c.country as country,
                     c.manufacturer as manufacturer,
                     c.customer_name, c.customer_bin, c.supplier_name, c.supplier_bin
-                FROM contracts c
+                FROM contracts_lots c
                 WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
                   AND {EXCLUDE_STATUSES_SQL}
                   AND (c.brand_model != '' OR c.country != '' OR c.manufacturer != '')
@@ -309,7 +309,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
             cur = con.cursor()
             cur.execute(
-                f"SELECT DISTINCT contract_id FROM contracts WHERE (supplier_bin = ? OR customer_bin = ? OR contract_number LIKE ? || '%') AND {EXCLUDE_STATUSES_SQL} AND contract_id IS NOT NULL LIMIT 15",
+                f"SELECT DISTINCT contract_id FROM contracts_lots WHERE (supplier_bin = ? OR customer_bin = ? OR contract_number LIKE ? || '%') AND {EXCLUDE_STATUSES_SQL} AND contract_id IS NOT NULL LIMIT 15",
                 (bin_code, bin_code, bin_code),
             )
             cids = [r[0] for r in cur.fetchall()]

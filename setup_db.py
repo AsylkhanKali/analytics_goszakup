@@ -10,6 +10,8 @@ parts = sorted(Path("db_parts").glob("goszakup.db.gz.part_*"))
 
 if parts:
     print(f"Found {len(parts)} parts. Reassembling and decompressing to {db_path} (Forced Update)...")
+    
+    Path("data").mkdir(parents=True, exist_ok=True)
     temp_gz = Path("data/temp.gz")
     
     with open(temp_gz, 'wb') as f_out:

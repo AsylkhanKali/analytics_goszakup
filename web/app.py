@@ -101,7 +101,7 @@ def get_contracts(bin_code: str):
                 c.supplier_name, c.supplier_bin, c.customer_name, c.customer_bin,
                 c.lot_title, COALESCE(c.quantity, 1) as qty, COALESCE(c.unit_price, 0) as u_price,
                 COALESCE(c.purchase_method, 'ОК') as p_meth
-            FROM contracts c
+            FROM contracts_lots c
             WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
               AND {EXCLUDE_STATUSES_SQL}
             ORDER BY c.contract_amount DESC LIMIT 10
@@ -144,7 +144,7 @@ def get_specs(bin_code: str):
                 c.country as country,
                 c.manufacturer as manufacturer,
                 c.customer_name, c.customer_bin, c.supplier_name, c.supplier_bin
-            FROM contracts c
+            FROM contracts_lots c
             WHERE (c.supplier_bin = ? OR c.customer_bin = ? OR c.contract_number LIKE ? || '%')
               AND {EXCLUDE_STATUSES_SQL}
               AND (c.brand_model != '' OR c.country != '' OR c.manufacturer != '')
@@ -205,7 +205,7 @@ def get_status():
                 specs_cnt = con.execute("SELECT COUNT(*) FROM supplier_specs").fetchone()[0]
             except sqlite3.OperationalError:
                 specs_cnt = 0
-            contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
+            contracts_cnt = con.execute(f"SELECT COUNT(*) FROM contracts_lots WHERE {EXCLUDE_STATUSES_SQL}").fetchone()[0]
         finally:
             con.close()
             

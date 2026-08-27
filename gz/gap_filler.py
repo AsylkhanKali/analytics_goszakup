@@ -74,7 +74,7 @@ def sync_bin_contracts_from_portal(con: sqlite3.Connection, bin_code: str) -> Di
 
     # Считываем существующие contract_id в базе
     existing_cids: Set[str] = set(
-        r[0] for r in cur.execute("SELECT contract_id FROM contracts WHERE contract_id IS NOT NULL AND contract_id != ''").fetchall()
+        r[0] for r in cur.execute("SELECT contract_id FROM contracts_lots WHERE contract_id IS NOT NULL AND contract_id != ''").fetchall()
     )
 
     # Формируем задачи с count_record=2000 для страниц 1..5 с фильтром по дате с 01.01.2024 и ref_subject_type=1 (Товары)
@@ -201,7 +201,7 @@ def sync_bin_contracts_from_portal(con: sqlite3.Connection, bin_code: str) -> Di
     if to_insert_rows:
         cur.executemany(
             """
-            INSERT OR IGNORE INTO contracts (
+            INSERT OR IGNORE INTO contracts_lots (
                 contract_id, contract_number, contract_date, contract_status,
                 customer_name, customer_bin, supplier_name, supplier_bin,
                 lot_title, unit_price, quantity, contract_amount,

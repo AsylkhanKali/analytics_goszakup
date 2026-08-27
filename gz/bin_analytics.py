@@ -80,7 +80,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             COUNT(*) as total_lots,
             COALESCE(SUM(c.contract_amount), 0) as total_amount,
             c.supplier_name
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
         (bin_code,),
@@ -92,7 +92,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         return None
 
     if not supplier_name:
-        cur.execute(f"SELECT supplier_name FROM contracts WHERE supplier_bin = ? AND {EXCLUDE_STATUSES_SQL} LIMIT 1", (bin_code,))
+        cur.execute(f"SELECT supplier_name FROM contracts_lots WHERE supplier_bin = ? AND {EXCLUDE_STATUSES_SQL} LIMIT 1", (bin_code,))
         r_name = cur.fetchone()
         supplier_name = r_name[0] if r_name else f"Поставщик БИН {bin_code}"
 
@@ -102,7 +102,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         SELECT 
             COUNT(DISTINCT CASE WHEN c.purchase_method = 'ОК' THEN c.contract_number END),
             COUNT(DISTINCT CASE WHEN c.purchase_method = 'ЗЦП' THEN c.contract_number END)
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
         (bin_code,),
@@ -119,7 +119,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             COALESCE(AVG(c.unit_price), AVG(c.contract_amount)) as avg_unit_price,
             SUM(c.contract_amount) as total_sum,
             COUNT(*) as occurrences
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL} AND c.lot_title IS NOT NULL AND c.lot_title != ''
         GROUP BY c.lot_title
         ORDER BY total_sum DESC
@@ -146,7 +146,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             c.customer_bin, 
             COUNT(DISTINCT c.contract_number) as contracts_cnt, 
             SUM(c.contract_amount) as total_sum
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL} AND c.customer_name IS NOT NULL
         GROUP BY c.customer_name, c.customer_bin
         ORDER BY total_sum DESC
@@ -172,7 +172,7 @@ def get_supplier_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             COALESCE(c.brand_model, 'Нет данных') as brand, 
             COALESCE(c.country, 'Нет данных') as country, 
             COALESCE(c.manufacturer, 'Нет данных') as mfr
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.supplier_bin = ? AND {EXCLUDE_STATUSES_SQL} 
           AND (c.brand_model != '' OR c.country != '' OR c.manufacturer != '')
         LIMIT 15
@@ -226,7 +226,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             COUNT(*) as total_lots,
             COALESCE(SUM(c.contract_amount), 0) as total_amount,
             c.customer_name
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
         (bin_code,),
@@ -238,7 +238,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         return None
 
     if not customer_name:
-        cur.execute(f"SELECT customer_name FROM contracts WHERE customer_bin = ? AND {EXCLUDE_STATUSES_SQL} LIMIT 1", (bin_code,))
+        cur.execute(f"SELECT customer_name FROM contracts_lots WHERE customer_bin = ? AND {EXCLUDE_STATUSES_SQL} LIMIT 1", (bin_code,))
         r_name = cur.fetchone()
         customer_name = r_name[0] if r_name else f"Заказчик БИН {bin_code}"
 
@@ -248,7 +248,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
         SELECT 
             COUNT(DISTINCT CASE WHEN c.purchase_method = 'ОК' THEN c.contract_number END),
             COUNT(DISTINCT CASE WHEN c.purchase_method = 'ЗЦП' THEN c.contract_number END)
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL}
         """,
         (bin_code,),
@@ -265,7 +265,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             COALESCE(AVG(c.unit_price), AVG(c.contract_amount)) as avg_unit_price,
             SUM(c.contract_amount) as total_sum,
             COUNT(*) as occurrences
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL} AND c.lot_title IS NOT NULL AND c.lot_title != ''
         GROUP BY c.lot_title
         ORDER BY total_sum DESC
@@ -292,7 +292,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             c.supplier_bin, 
             COUNT(DISTINCT c.contract_number) as contracts_cnt, 
             SUM(c.contract_amount) as total_sum
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL} AND c.supplier_name IS NOT NULL
         GROUP BY c.supplier_name, c.supplier_bin
         ORDER BY total_sum DESC
@@ -318,7 +318,7 @@ def get_customer_stats(con: sqlite3.Connection, bin_code: str) -> Optional[Dict[
             COALESCE(c.brand_model, 'Нет данных') as brand, 
             COALESCE(c.country, 'Нет данных') as country, 
             COALESCE(c.manufacturer, 'Нет данных') as mfr
-        FROM contracts c
+        FROM contracts_lots c
         WHERE c.customer_bin = ? AND {EXCLUDE_STATUSES_SQL} 
           AND (c.brand_model != '' OR c.country != '' OR c.manufacturer != '')
         LIMIT 15

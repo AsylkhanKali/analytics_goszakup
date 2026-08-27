@@ -49,15 +49,41 @@ def run_db_setup():
 
 threading.Thread(target=run_db_setup, daemon=True).start()
 
+def run_telegram_bot():
+    lock_file = Path("/tmp/telegram_bot.lock")
+    if lock_file.exists():
+        return
+    try:
+        lock_file.touch()
+        with open("bot.log", "w") as log_f:
+            log_f.write("Starting telegram bot in background...\n")
+            log_f.flush()
+            subprocess.run([sys.executable, "bot.py"], stdout=log_f, stderr=subprocess.STDOUT)
+            log_f.write("bot.py background process finished.\n")
+    except Exception as e:
+        with open("bot.log", "a") as log_f:
+            log_f.write(f"Failed to run bot.py: {e}\n{traceback.format_exc()}\n")
+    finally:
+        if lock_file.exists():
+            lock_file.unlink()
+
+threading.Thread(target=run_telegram_bot, daemon=True).start()
+
 STARTUP_TIME = datetime.datetime.now()
 
 @app.get("/api/logs")
 def get_logs():
     try:
-        with open("setup_db.log", "r") as f:
-            return {"logs": f.read()}
-    except FileNotFoundError:
-        return {"logs": "No logs found yet."}
+        logs = ""
+        if os.path.exists("setup_db.log"):
+            with open("setup_db.log", "r") as f:
+                logs += "=== setup_db.log ===\n" + f.read() + "\n"
+        if os.path.exists("bot.log"):
+            with open("bot.log", "r") as f:
+                logs += "=== bot.log ===\n" + f.read() + "\n"
+        return {"logs": logs or "No logs yet"}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/health")
 def health_check():

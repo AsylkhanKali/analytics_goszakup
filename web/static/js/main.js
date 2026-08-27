@@ -62,6 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.getElementById('companyName').textContent = `Аналитика: ${companyName} (${data.bin})`;
             
+            let roleHtml = '';
+            if (sup.total_contracts > 0) {
+                roleHtml += `<span style="background: rgba(108, 92, 231, 0.2); color: #a29bfe; padding: 4px 10px; border-radius: 6px; margin-right: 10px;"><i class="fa-solid fa-truck"></i> Как поставщик: <b>${sup.total_contracts}</b></span>`;
+            }
+            if (cust.total_contracts > 0) {
+                roleHtml += `<span style="background: rgba(0, 184, 148, 0.2); color: #55efc4; padding: 4px 10px; border-radius: 6px;"><i class="fa-solid fa-building-columns"></i> Как заказчик: <b>${cust.total_contracts}</b></span>`;
+            }
+            document.getElementById('roleBadges').innerHTML = roleHtml;
+            
             const totalContracts = (sup.total_contracts || 0) + (cust.total_contracts || 0);
             const totalAmount = (sup.total_amount || 0) + (cust.total_amount || 0);
             const okCount = (sup.open_tender_contracts || 0) + (cust.open_tender_contracts || 0);

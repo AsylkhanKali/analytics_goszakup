@@ -119,9 +119,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             
             let counterparty = '';
-            if (bin === c.customer_bin) counterparty = `🤝 Поставщик:<br>${c.supplier_name}`;
-            else if (bin === c.supplier_bin) counterparty = `🏛️ Заказчик:<br>${c.customer_name}`;
-            else counterparty = `🏛️ З: ${c.customer_name}<br>🤝 П: ${c.supplier_name}`;
+            if (bin === c.customer_bin) counterparty = `<div class="role-badge supplier"><i class="fa-solid fa-truck"></i> Поставщик</div><br>${c.supplier_name}`;
+            else if (bin === c.supplier_bin) counterparty = `<div class="role-badge customer"><i class="fa-solid fa-building-columns"></i> Заказчик</div><br>${c.customer_name}`;
+            else counterparty = `<div class="role-badge customer">З</div> ${c.customer_name}<br><div class="role-badge supplier">П</div> ${c.supplier_name}`;
 
             tr.innerHTML = `
                 <td><code>${c.contract_number}</code></td>
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${counterparty}</td>
                 <td class="text-right">${formatCurrency(c.qty)}</td>
                 <td class="text-right">${formatCurrency(c.unit_price)}</td>
-                <td class="text-right"><strong>${formatCurrency(c.amount)}</strong></td>
+                <td class="text-right text-success">${formatCurrency(c.amount)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -145,8 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             
             let counterparty = '';
-            if (bin === s.customer_bin) counterparty = `🤝 ${s.supplier_name}`;
-            else if (bin === s.supplier_bin) counterparty = `🏛️ ${s.customer_name}`;
+            if (bin === s.customer_bin) counterparty = `<div class="role-badge supplier"><i class="fa-solid fa-truck"></i></div> ${s.supplier_name}`;
+            else if (bin === s.supplier_bin) counterparty = `<div class="role-badge customer"><i class="fa-solid fa-building-columns"></i></div> ${s.customer_name}`;
             
             tr.innerHTML = `
                 <td>${s.title}</td>
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${s.country || '-'}</td>
                 <td>${s.manufacturer || '-'}</td>
                 <td>${counterparty}</td>
-                <td class="text-right"><strong>${formatCurrency(s.amount)}</strong></td>
+                <td class="text-right text-accent">${formatCurrency(s.amount)}</td>
             `;
             tbody.appendChild(tr);
         });

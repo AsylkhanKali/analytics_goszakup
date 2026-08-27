@@ -64,7 +64,7 @@ def generate_bin_excel(con: sqlite3.Connection, bin_code: str) -> io.BytesIO:
         COALESCE(NULLIF(c.country, ''), 'Нет данных') as "Страна происхождения",
         COALESCE(NULLIF(c.manufacturer, ''), 'Нет данных') as "Завод-изготовитель"
     FROM contracts_lots c
-    WHERE (c.customer_bin = ? OR c.contract_number LIKE ? || '/%')
+    WHERE c.customer_bin = ?
       AND LOWER(c.contract_status) NOT LIKE '%расторгнут%'
       AND LOWER(c.contract_status) NOT LIKE '%не заключен%'
       AND LOWER(c.contract_status) NOT LIKE '%не исполнен%'
@@ -72,7 +72,7 @@ def generate_bin_excel(con: sqlite3.Connection, bin_code: str) -> io.BytesIO:
     ORDER BY c.contract_amount DESC
     """
 
-    df_cust = pd.read_sql_query(query_customer, con, params=[bin_code, bin_code])
+    df_cust = pd.read_sql_query(query_customer, con, params=[bin_code])
 
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         if not df_sup.empty:

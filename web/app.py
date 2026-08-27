@@ -30,18 +30,34 @@ app.mount("/static", StaticFiles(directory="web/static"), name="static")
 import subprocess
 import sys
 import threading
+import traceback
+from pathlib import Path
 
 def run_db_setup():
     try:
-        print("Running setup_db.py in background...")
-        subprocess.run([sys.executable, "setup_db.py"], check=False)
-        print("setup_db.py background setup finished.")
+        with open("setup_db.log", "w") as log_f:
+            log_f.write("Running setup_db.py in background...\n")
+            log_f.flush()
+            result = subprocess.run([sys.executable, "setup_db.py"], capture_output=True, text=True, check=False)
+            log_f.write(f"STDOUT:\n{result.stdout}\n")
+            log_f.write(f"STDERR:\n{result.stderr}\n")
+            log_f.write(f"Exit code: {result.returncode}\n")
+            log_f.write("setup_db.py background setup finished.\n")
     except Exception as e:
-        print(f"Failed to run setup_db.py: {e}")
+        with open("setup_db.log", "a") as log_f:
+            log_f.write(f"Failed to run setup_db.py: {e}\n{traceback.format_exc()}\n")
 
 threading.Thread(target=run_db_setup, daemon=True).start()
 
 STARTUP_TIME = datetime.datetime.now()
+
+@app.get("/api/logs")
+def get_logs():
+    try:
+        with open("setup_db.log", "r") as f:
+            return {"logs": f.read()}
+    except FileNotFoundError:
+        return {"logs": "No logs found yet."}
 
 @app.get("/health")
 def health_check():

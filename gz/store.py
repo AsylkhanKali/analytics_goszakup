@@ -94,10 +94,20 @@ NO_DATA = "Нет данных"
 
 
 def connect(path: Path = DB) -> sqlite3.Connection:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(path, timeout=60)
+    err_path = Path("data/setup_error.txt")
+    if err_path.exists():
+        with open(err_path, "r") as f:
+            err_msg = f.read()
+        raise Exception(f"DB Setup failed: {err_msg}")
+        
+    tmp_path = Path("data/goszakup.db.tmp")
+    if tmp_path.exists() or not path.exists():
+        raise Exception("Установка базы данных... Пожалуйста, подождите 2-3 минуты и обновите страницу.")
+        
+    con = sqlite3.connect(f"file:{path}?mode=rw", uri=True, check_same_thread=False)
+    con.row_factory = sqlite3.Row
     con.execute("PRAGMA journal_mode=WAL")
-    con.execute("PRAGMA busy_timeout=60000")
+    con.execute("PRAGMA synchronous=NORMAL")
     con.executescript(SCHEMA)
     return con
 

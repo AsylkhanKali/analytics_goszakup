@@ -25,26 +25,28 @@ from typing import List, Dict, Any, Tuple, Optional
 
 # Database auto-resolution
 DEFAULT_DB_LOCATIONS = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'goszakup.db'),
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'all_data', 'goszakup_2024_2026_final.db'),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data parser for deals', 'Data_new_session', 'data', 'goszakup_2024_2026.db'),
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'goszakup.db')
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data parser for deals', 'Data_new_session', 'data', 'goszakup_2024_2026.db')
 ]
 
 def resolve_default_db() -> str:
     env_db = os.getenv('GOSZAKUP_DB_PATH')
     if env_db and os.path.exists(env_db):
         return env_db
-    candidates = []
+    best_path = None
+    best_size = -1
     for p in DEFAULT_DB_LOCATIONS:
         if os.path.exists(p):
             try:
                 sz = os.path.getsize(p)
-                candidates.append((sz, p))
+                if sz > best_size:
+                    best_size = sz
+                    best_path = p
             except Exception:
                 pass
-    if candidates:
-        candidates.sort(key=lambda x: x[0], reverse=True)
-        return candidates[0][1]
+    if best_path:
+        return best_path
     return DEFAULT_DB_LOCATIONS[0]
 
 DB_PATH = resolve_default_db()

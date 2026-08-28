@@ -86,6 +86,7 @@ def get_logs():
         return {"error": str(e)}
 
 @app.get("/health")
+@app.head("/health")
 def health_check():
     uptime = datetime.datetime.now() - STARTUP_TIME
     return {
@@ -96,6 +97,7 @@ def health_check():
     }
 
 @app.get("/", response_class=HTMLResponse)
+@app.head("/", response_class=HTMLResponse)
 async def read_index():
     with open("web/templates/index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read(), status_code=200)

@@ -80,11 +80,11 @@ def sync_bin_contracts_from_portal(con: sqlite3.Connection, bin_code: str) -> Di
         ).fetchall()
     )
 
-    # Формируем задачи с count_record=2000 для страниц 1..5 с фильтром по дате с 01.01.2024
+    # Формируем задачи с count_record=2000 для страниц 1..5 с фильтром по дате с 01.01.2024 и ref_subject_type=1 (Товары)
     tasks = []
     for role in ["customer", "supplier"]:
         for page in range(1, 6):
-            url = f"https://goszakup.gov.kz/ru/registry/contract?filter%5B{role}%5D={bin_code}&filter%5Bstart_date_from%5D=01.01.2024&count_record=2000&page={page}"
+            url = f"https://goszakup.gov.kz/ru/registry/contract?filter%5B{role}%5D={bin_code}&filter%5Bstart_date_from%5D=01.01.2024&filter%5Bref_subject_type%5D=1&count_record=2000&page={page}"
             tasks.append((role, page, url))
 
     # Выполняем параллельно в 6 потоков

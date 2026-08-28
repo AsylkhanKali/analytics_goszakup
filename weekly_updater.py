@@ -542,7 +542,7 @@ async def scrape_slice_incremental(session: aiohttp.ClientSession, sem: asyncio.
     print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] <<< Completed slice {start_date}..{end_date}: +{total_new_contracts:,} contracts, +{total_new_lots:,} lots added.\n", flush=True)
     return total_new_contracts, total_new_lots
 
-async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 60, force_start: Optional[str] = None, force_end: Optional[str] = None, overlap_days: int = 2) -> Dict[str, Any]:
+async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 60, force_start: Optional[str] = None, force_end: Optional[str] = None, overlap_days: int = 8) -> Dict[str, Any]:
     init_tables(db_path)
     
     today = datetime.date.today()
@@ -656,7 +656,7 @@ if __name__ == "__main__":
     parser.add_argument("--concurrency", type=int, default=60, help="Concurrency (default 60)")
     parser.add_argument("--start", type=str, default=None, help="Force specific start date (YYYY-MM-DD)")
     parser.add_argument("--end", type=str, default=None, help="Force specific end date (YYYY-MM-DD)")
-    parser.add_argument("--overlap-days", type=int, default=2, help="Days to step back from latest date (default 2)")
+    parser.add_argument("--overlap-days", type=int, default=8, help="Days to step back from latest date (default 8)")
     parser.add_argument("--check-only", action="store_true", help="Only check status without running update")
     args = parser.parse_args()
     

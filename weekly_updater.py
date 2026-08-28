@@ -34,9 +34,17 @@ def resolve_default_db() -> str:
     env_db = os.getenv('GOSZAKUP_DB_PATH')
     if env_db and os.path.exists(env_db):
         return env_db
+    candidates = []
     for p in DEFAULT_DB_LOCATIONS:
         if os.path.exists(p):
-            return p
+            try:
+                sz = os.path.getsize(p)
+                candidates.append((sz, p))
+            except Exception:
+                pass
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]
     return DEFAULT_DB_LOCATIONS[0]
 
 DB_PATH = resolve_default_db()

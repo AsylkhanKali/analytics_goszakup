@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
-Goszakup Weekly Auto-Updater
-----------------------------
-Automatically detects the latest contract date in the database,
-fetches fresh contracts up to today (Goods only: ZCP, OK, OI),
-handles the 10k portal limit with dynamic interval subdividing,
-saves lots to contracts_lots, creates database checkpoints,
-and logs sync history.
+Goszakup Weekly Auto-Updater (Production Engine)
+------------------------------------------------
+1. Automatically finds the latest contract date in the SQLite DB (e.g., June 16).
+2. Steps back 2 days (e.g., June 14) to catch any late registrations or timestamp cutoffs.
+3. Loads all existing contract IDs into memory for strict deduplication.
+4. Generates 5-day intervals up to today with 1-day boundary overlaps.
+5. Employs 10k threshold protection with dynamic interval subdivision.
+6. Uses Selectolax C-Fast Parser and concurrent sub-requests for high throughput.
+7. Logs sync checkpoints to sync_history table and triggers SQLite WAL checkpoints.
 """
 
 import asyncio
 import aiohttp
-from bs4 import BeautifulSoup
+from selectolax.parser import HTMLParser
 import sqlite3
 import os
 import re
@@ -21,7 +23,7 @@ import datetime
 import argparse
 from typing import List, Dict, Any, Tuple, Optional
 
-# Default database resolution
+# Database auto-resolution
 DEFAULT_DB_LOCATIONS = [
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'all_data', 'goszakup_2024_2026_final.db'),
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data parser for deals', 'Data_new_session', 'data', 'goszakup_2024_2026.db'),
@@ -41,12 +43,6 @@ DB_PATH = resolve_default_db()
 TABLE_NAME = 'contracts_lots'
 PROGRESS_TABLE = 'intervals_progress'
 SYNC_HISTORY_TABLE = 'sync_history'
-
-ALLOWED_STATUS_STRINGS = {
-    'Действует', 'Изменен', 'Изменён', 'Исполнен', 'Подписан',
-    'Создано доп.соглашение', 'Создано доп. соглашение', 'Создано дополнительное соглашение',
-    'Частично исполнен'
-}
 
 STATUS_CODES = ['190', '455', '390', '185', '450', '375']
 # ЗЦП (3), ОК (2), ОИ (6, 23, 105, 123, 125, 131)
@@ -147,7 +143,7 @@ def record_sync_start(from_date: str, to_date: str, db_path: str = DB_PATH) -> i
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     c.execute(f'''
         INSERT INTO {SYNC_HISTORY_TABLE} (started_at, from_date, to_date, status, details)
-        VALUES (?, ?, ?, 'running', 'Sync in progress')
+        VALUES (?, ?, ?, 'running', 'Weekly sync in progress')
     ''', (now_str, from_date, to_date))
     sync_id = c.lastrowid
     conn.commit()
@@ -232,50 +228,15 @@ def save_lots(lots: List[Dict[str, Any]], db_path: str = DB_PATH):
         except Exception as e:
             time.sleep(2)
 
-def update_progress(start_date: str, end_date: str, method_tag: str, status: str, contracts_count: int, lots_count: int, db_path: str = DB_PATH):
+def get_existing_contract_ids(db_path: str = DB_PATH, since_date: Optional[str] = None) -> set:
     for attempt in range(10):
         try:
             conn = get_db_connection(db_path)
             c = conn.cursor()
-            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            c.execute(f'''
-                INSERT INTO {PROGRESS_TABLE} (interval_start, interval_end, method_tag, status, contracts_count, lots_count, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(interval_start, interval_end, method_tag) DO UPDATE SET
-                    status=excluded.status,
-                    contracts_count=contracts_count + excluded.contracts_count,
-                    lots_count=lots_count + excluded.lots_count,
-                    updated_at=excluded.updated_at
-            ''', (start_date, end_date, method_tag, status, contracts_count, lots_count, now_str))
-            conn.commit()
-            try:
-                conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
-            except Exception:
-                pass
-            conn.close()
-            return
-        except Exception:
-            time.sleep(2)
-
-def is_interval_completed(start_date: str, end_date: str, method_tag: str = 'all', db_path: str = DB_PATH) -> bool:
-    for attempt in range(10):
-        try:
-            conn = get_db_connection(db_path)
-            c = conn.cursor()
-            c.execute(f"SELECT status FROM {PROGRESS_TABLE} WHERE interval_start=? AND interval_end=? AND method_tag=?", (start_date, end_date, method_tag))
-            row = c.fetchone()
-            conn.close()
-            return row is not None and row[0] == 'completed'
-        except Exception:
-            time.sleep(1)
-    return False
-
-def get_existing_contract_ids(db_path: str = DB_PATH) -> set:
-    for attempt in range(10):
-        try:
-            conn = get_db_connection(db_path)
-            c = conn.cursor()
-            c.execute(f"SELECT DISTINCT contract_id FROM {TABLE_NAME}")
+            if since_date:
+                c.execute(f"SELECT DISTINCT contract_id FROM {TABLE_NAME} WHERE contract_date >= ?", (since_date,))
+            else:
+                c.execute(f"SELECT DISTINCT contract_id FROM {TABLE_NAME}")
             res = set(row[0] for row in c.fetchall())
             conn.close()
             return res
@@ -283,89 +244,91 @@ def get_existing_contract_ids(db_path: str = DB_PATH) -> set:
             time.sleep(1)
     return set()
 
-def parse_total_records(html: str) -> int:
-    soup = BeautifulSoup(html, 'html.parser')
-    info = soup.find('div', class_='dataTables_info')
+def parse_total_records_fast(html: str) -> int:
+    tree = HTMLParser(html)
+    info = tree.css_first('div.dataTables_info')
     if info:
-        m = re.search(r'из\s+([\d\s]+)\s+запис', info.text)
+        m = re.search(r'из\s+([\d\s]+)\s+запис', info.text())
         if m:
             return int(m.group(1).replace(' ', ''))
     return 0
 
-async def fetch_customer_supplier(session: aiohttp.ClientSession, contract_id: str) -> Tuple[str, str, str, str]:
+async def fetch_customer_supplier_fast(session: aiohttp.ClientSession, contract_id: str) -> Tuple[str, str, str, str]:
     url = f"https://goszakup.gov.kz/ru/egzcontract/cpublic/customer_n_supplier/{contract_id}"
-    for attempt in range(100):
+    for attempt in range(50):
         try:
-            async with session.get(url, timeout=30) as resp:
+            async with session.get(url, timeout=25) as resp:
                 if resp.status == 429:
                     await asyncio.sleep(RETRY_PAUSE_429)
                     continue
                 if resp.status != 200:
-                    await asyncio.sleep(4)
+                    await asyncio.sleep(2)
                     continue
                 html = await resp.text()
                 if "429 Too" in html or "g-recaptcha" in html:
                     await asyncio.sleep(RETRY_PAUSE_429)
                     continue
                 
-                soup = BeautifulSoup(html, 'html.parser')
-                tables = soup.find_all('table')
+                tree = HTMLParser(html)
+                tables = tree.css('table')
                 c_bin, c_name = "", ""
                 s_bin, s_name = "", ""
                 
                 if len(tables) > 0:
-                    for row in tables[0].find_all('tr'):
-                        cols = row.find_all(['th', 'td'])
+                    for row in tables[0].css('tr'):
+                        cols = row.css('th, td')
                         if len(cols) == 2:
-                            k, v = cols[0].text.strip(), cols[1].text.strip()
+                            k = cols[0].text(strip=True)
+                            v = cols[1].text(strip=True)
                             if 'БИН' in k: c_bin = v
                             elif 'Наименование заказчика' in k: c_name = v
                 if len(tables) > 1:
-                    for row in tables[1].find_all('tr'):
-                        cols = row.find_all(['th', 'td'])
+                    for row in tables[1].css('tr'):
+                        cols = row.css('th, td')
                         if len(cols) == 2:
-                            k, v = cols[0].text.strip(), cols[1].text.strip()
+                            k = cols[0].text(strip=True)
+                            v = cols[1].text(strip=True)
                             if 'БИН' in k or 'ИИН' in k:
                                 if v: s_bin = v
                             elif 'Наименование поставщика' in k: s_name = v
                 return c_name, c_bin, s_name, s_bin
         except Exception:
-            await asyncio.sleep(4)
+            await asyncio.sleep(2)
     return "", "", "", ""
 
-async def fetch_lots(session: aiohttp.ClientSession, contract_id: str) -> List[Dict[str, Any]]:
+async def fetch_lots_fast(session: aiohttp.ClientSession, contract_id: str) -> List[Dict[str, Any]]:
     url = f"https://goszakup.gov.kz/ru/egzcontract/cpublic/units/{contract_id}"
-    for attempt in range(100):
+    for attempt in range(50):
         try:
-            async with session.get(url, timeout=30) as resp:
+            async with session.get(url, timeout=25) as resp:
                 if resp.status == 429:
                     await asyncio.sleep(RETRY_PAUSE_429)
                     continue
                 if resp.status != 200:
-                    await asyncio.sleep(4)
+                    await asyncio.sleep(2)
                     continue
                 html = await resp.text()
                 if "429 Too" in html or "g-recaptcha" in html:
                     await asyncio.sleep(RETRY_PAUSE_429)
                     continue
                 
-                soup = BeautifulSoup(html, 'html.parser')
-                table = soup.find('table')
+                tree = HTMLParser(html)
+                table = tree.css_first('table')
                 if not table:
                     return []
                 
                 lots = []
-                for row in table.find_all('tr'):
-                    cols = row.find_all(['td', 'th'])
-                    if len(cols) >= 9 and cols[0].name != 'th':
-                        lot_id = cols[1].text.strip()
-                        title = cols[4].text.strip()
+                for row in table.css('tr'):
+                    cols = row.css('td, th')
+                    if len(cols) >= 9 and cols[0].tag != 'th':
+                        lot_id = cols[1].text(strip=True)
+                        title = cols[4].text(strip=True)
                         if title == "Наименование":
                             continue
                         try:
-                            quantity = float(cols[5].text.strip().replace(' ', '').replace(',', '.'))
-                            unit_price = float(cols[7].text.strip().replace(' ', '').replace(',', '.'))
-                            amount = float(cols[8].text.strip().replace(' ', '').replace(',', '.'))
+                            quantity = float(cols[5].text(strip=True).replace(' ', '').replace(',', '.'))
+                            unit_price = float(cols[7].text(strip=True).replace(' ', '').replace(',', '.'))
+                            amount = float(cols[8].text(strip=True).replace(' ', '').replace(',', '.'))
                         except Exception:
                             quantity, unit_price, amount = 0.0, 0.0, 0.0
                         lots.append({
@@ -377,13 +340,15 @@ async def fetch_lots(session: aiohttp.ClientSession, contract_id: str) -> List[D
                         })
                 return lots
         except Exception:
-            await asyncio.sleep(4)
+            await asyncio.sleep(2)
     return []
 
-async def process_contract(session: aiohttp.ClientSession, sem: asyncio.Semaphore, contract: dict) -> List[Dict[str, Any]]:
+async def process_contract_fast(session: aiohttp.ClientSession, sem: asyncio.Semaphore, contract: dict) -> List[Dict[str, Any]]:
     async with sem:
-        c_name, c_bin, s_name, s_bin = await fetch_customer_supplier(session, contract['contract_id'])
-        lots = await fetch_lots(session, contract['contract_id'])
+        cust_supp_task = fetch_customer_supplier_fast(session, contract['contract_id'])
+        units_task = fetch_lots_fast(session, contract['contract_id'])
+        
+        (c_name, c_bin, s_name, s_bin), lots = await asyncio.gather(cust_supp_task, units_task)
         
         cust_name = c_name if c_name else contract.get('customer_reg', '')
         supp_name = s_name if s_name else contract.get('supplier_reg', '')
@@ -423,35 +388,35 @@ async def process_contract(session: aiohttp.ClientSession, sem: asyncio.Semaphor
             results.append(row)
         return results
 
-async def fetch_registry_page(session: aiohttp.ClientSession, params: list, page: int) -> Tuple[str, List[Any], BeautifulSoup]:
+async def fetch_registry_page_fast(session: aiohttp.ClientSession, params: list, page: int) -> Tuple[str, List[Any], Any]:
     params_with_page = list(params) + [('page', str(page))]
-    for retry in range(100):
+    for retry in range(50):
         try:
-            async with session.get('https://goszakup.gov.kz/ru/registry/contract', params=params_with_page, timeout=40) as resp:
+            async with session.get('https://goszakup.gov.kz/ru/registry/contract', params=params_with_page, timeout=35) as resp:
                 if resp.status == 429:
                     await asyncio.sleep(RETRY_PAUSE_429)
                     continue
                 if resp.status != 200:
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(5)
                     continue
                 html = await resp.text()
                 if "429 Too" in html or "g-recaptcha" in html:
                     await asyncio.sleep(RETRY_PAUSE_429)
                     continue
                     
-                soup = BeautifulSoup(html, 'html.parser')
-                tables = soup.find_all('table')
+                tree = HTMLParser(html)
+                tables = tree.css('table')
                 if len(tables) < 2:
                     if "Записей не найдено" in html or "Ничего не найдено" in html or "нет данных" in html.lower():
-                        return html, [], soup
-                    await asyncio.sleep(5)
+                        return html, [], tree
+                    await asyncio.sleep(3)
                     continue
-                return html, tables, soup
+                return html, tables, tree
         except Exception:
-            await asyncio.sleep(15)
+            await asyncio.sleep(8)
     return "", [], None
 
-async def scrape_slice(session: aiohttp.ClientSession, sem: asyncio.Semaphore, start_date: str, end_date: str, methods: list, existing_ids: set, method_tag: str = 'all', db_path: str = DB_PATH) -> Tuple[int, int]:
+async def scrape_slice_incremental(session: aiohttp.ClientSession, sem: asyncio.Semaphore, start_date: str, end_date: str, methods: list, existing_ids: set, db_path: str = DB_PATH) -> Tuple[int, int]:
     start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
     end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
     
@@ -464,131 +429,120 @@ async def scrape_slice(session: aiohttp.ClientSession, sem: asyncio.Semaphore, s
     for s in STATUS_CODES: params.append(('filter[status][]', s))
     for m in methods: params.append(('filter[method][]', m))
         
-    html_p1, tables_p1, soup_p1 = await fetch_registry_page(session, params, 1)
+    html_p1, tables_p1, tree_p1 = await fetch_registry_page_fast(session, params, 1)
     if not html_p1 or len(tables_p1) < 2:
-        update_progress(start_date, end_date, method_tag, 'completed', 0, 0, db_path)
         return 0, 0
         
-    total_records = parse_total_records(html_p1)
-    print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] Query {start_date}..{end_date} (tag: {method_tag}): Portal reports {total_records} contracts.", flush=True)
+    total_records = parse_total_records_fast(html_p1)
+    print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] Query {start_date}..{end_date}: Portal reports {total_records:,} contracts.", flush=True)
     
+    # 10k Cap Protection: subdivide recursively if >= CAP_THRESHOLD
     if total_records >= CAP_THRESHOLD:
         days_diff = (end_dt - start_dt).days
-        if days_diff > 0:
+        if days_diff > 1:
             mid_days = days_diff // 2
             mid_dt = start_dt + datetime.timedelta(days=mid_days)
-            mid_next_dt = mid_dt + datetime.timedelta(days=1)
             
             s1_start, s1_end = start_dt.strftime("%Y-%m-%d"), mid_dt.strftime("%Y-%m-%d")
-            s2_start, s2_end = mid_next_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
+            s2_start, s2_end = mid_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
             
-            c1, l1 = await scrape_slice(session, sem, s1_start, s1_end, methods, existing_ids, method_tag, db_path)
-            c2, l2 = await scrape_slice(session, sem, s2_start, s2_end, methods, existing_ids, method_tag, db_path)
-            
-            update_progress(start_date, end_date, method_tag, 'completed', c1 + c2, l1 + l2, db_path)
+            print(f"⚡ [CAP PROTECTION] Subdividing [{start_date}..{end_date}] -> [{s1_start}..{s1_end}] and [{s2_start}..{s2_end}]", flush=True)
+            c1, l1 = await scrape_slice_incremental(session, sem, s1_start, s1_end, methods, existing_ids, db_path)
+            c2, l2 = await scrape_slice_incremental(session, sem, s2_start, s2_end, methods, existing_ids, db_path)
             return c1 + c2, l1 + l2
         else:
             if len(methods) > 1:
+                print(f"⚡ [CAP PROTECTION] Subdividing {start_date} by individual procurement methods...", flush=True)
                 total_c_sub, total_l_sub = 0, 0
                 for m_code in methods:
-                    tag_m = f"m_{m_code}"
-                    c_m, l_m = await scrape_slice(session, sem, start_date, end_date, [m_code], existing_ids, tag_m, db_path)
+                    c_m, l_m = await scrape_slice_incremental(session, sem, start_date, end_date, [m_code], existing_ids, db_path)
                     total_c_sub += c_m
                     total_l_sub += l_m
-                update_progress(start_date, end_date, method_tag, 'completed', total_c_sub, total_l_sub, db_path)
                 return total_c_sub, total_l_sub
 
-    update_progress(start_date, end_date, method_tag, 'in_progress', 0, 0, db_path)
     page = 1
-    total_contracts_slice = 0
-    total_lots_slice = 0
+    total_new_contracts = 0
+    total_new_lots = 0
     
     while True:
         if page == 1:
             tables = tables_p1
-            soup = soup_p1
+            tree = tree_p1
         else:
-            _, tables, soup = await fetch_registry_page(session, params, page)
+            _, tables, tree = await fetch_registry_page_fast(session, params, page)
             
         if len(tables) < 2:
             break
             
         table = tables[1]
-        tbody = table.find('tbody')
-        rows = tbody.find_all('tr') if tbody else []
+        tbody = table.css_first('tbody')
+        rows = tbody.css('tr') if tbody else []
         if not rows:
             break
             
-        contracts_to_fetch = []
+        to_fetch = []
         for r in rows:
-            cols = r.find_all('td')
+            cols = r.css('td')
             if len(cols) >= 10:
-                cid = cols[0].text.strip()
-                c_num_tag = cols[1].find('a')
-                c_num = c_num_tag.text.strip() if c_num_tag else cols[1].text.strip()
-                purch_num = cols[2].text.strip()
-                c_type = cols[3].text.strip()
-                c_status = cols[4].text.strip()
-                c_date = cols[5].text.strip()
-                
-                try:
-                    amt_raw = float(cols[6].text.strip().replace(' ', '').replace(',', '.'))
-                except Exception:
-                    amt_raw = 0.0
-                    
-                cust_reg = cols[7].text.strip()
-                supp_reg = cols[8].text.strip()
-                purch_method = cols[9].text.strip()
-                
+                cid = cols[0].text(strip=True)
+                # DEDUPLICATION: Only process contract if NOT already in DB
                 if cid not in existing_ids:
-                    contracts_to_fetch.append({
+                    c_num_tag = cols[1].css_first('a')
+                    c_num = c_num_tag.text(strip=True) if c_num_tag else cols[1].text(strip=True)
+                    try:
+                        amt = float(cols[6].text(strip=True).replace(' ', '').replace(',', '.'))
+                    except Exception:
+                        amt = 0.0
+                    to_fetch.append({
                         'contract_id': cid,
                         'contract_number': c_num,
-                        'purchase_number': purch_num,
-                        'contract_type': c_type,
-                        'contract_status': c_status,
-                        'contract_date': c_date,
-                        'amount_raw': amt_raw,
-                        'customer_reg': cust_reg,
-                        'supplier_reg': supp_reg,
-                        'purchase_method': purch_method,
+                        'purchase_number': cols[2].text(strip=True),
+                        'contract_type': cols[3].text(strip=True),
+                        'contract_status': cols[4].text(strip=True),
+                        'contract_date': cols[5].text(strip=True),
+                        'amount_raw': amt,
+                        'customer_reg': cols[7].text(strip=True),
+                        'supplier_reg': cols[8].text(strip=True),
+                        'purchase_method': cols[9].text(strip=True),
                     })
                     existing_ids.add(cid)
                     
-        if contracts_to_fetch:
-            CHUNK_SIZE = 50
-            for i in range(0, len(contracts_to_fetch), CHUNK_SIZE):
-                chunk = contracts_to_fetch[i:i + CHUNK_SIZE]
-                tasks = [process_contract(session, sem, c) for c in chunk]
-                batch_results = await asyncio.gather(*tasks)
+        if to_fetch:
+            CHUNK_SIZE = 100
+            for i in range(0, len(to_fetch), CHUNK_SIZE):
+                chunk = to_fetch[i:i + CHUNK_SIZE]
+                tasks = [process_contract_fast(session, sem, c) for c in chunk]
+                batch_res = await asyncio.gather(*tasks)
                 
                 chunk_lots = []
-                for res in batch_results:
-                    if res:
-                        chunk_lots.extend(res)
-                        
+                for res in batch_res:
+                    if res: chunk_lots.extend(res)
+                    
                 if chunk_lots:
                     save_lots(chunk_lots, db_path)
-                    total_lots_slice += len(chunk_lots)
-                total_contracts_slice += len(chunk)
+                    total_new_lots += len(chunk_lots)
+                total_new_contracts += len(chunk)
                 
-                print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] [{start_date}..{end_date}] Page {page} [{min(i + CHUNK_SIZE, len(contracts_to_fetch))}/{len(contracts_to_fetch)}]: +{len(chunk_lots)} lots (slice total: {total_lots_slice})", flush=True)
-                
-        pagination = soup.find('ul', class_='pagination')
+                print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] [{start_date}..{end_date}] Page {page} [{min(i + CHUNK_SIZE, len(to_fetch))}/{len(to_fetch)}]: +{len(chunk_lots)} lots (Slice total: {total_new_lots})", flush=True)
+        else:
+            print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] [{start_date}..{end_date}] Page {page}: all {len(rows)} contracts already exist in DB.", flush=True)
+            
+        pagination = tree.css_first('ul.pagination')
         has_next = False
         if pagination:
-            next_link = pagination.find('a', href=re.compile(rf'page={page+1}'))
-            if next_link:
-                has_next = True
+            for a_tag in pagination.css('a'):
+                href = a_tag.attributes.get('href', '')
+                if f'page={page+1}' in href:
+                    has_next = True
+                    break
         if not has_next:
             break
         page += 1
         
-    update_progress(start_date, end_date, method_tag, 'completed', total_contracts_slice, total_lots_slice, db_path)
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] <<< Completed slice {start_date}..{end_date}: {total_contracts_slice} contracts, {total_lots_slice} lots saved.\n", flush=True)
-    return total_contracts_slice, total_lots_slice
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] <<< Completed slice {start_date}..{end_date}: +{total_new_contracts:,} contracts, +{total_new_lots:,} lots added.\n", flush=True)
+    return total_new_contracts, total_new_lots
 
-async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force_start: Optional[str] = None, force_end: Optional[str] = None) -> Dict[str, Any]:
+async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 60, force_start: Optional[str] = None, force_end: Optional[str] = None, overlap_days: int = 2) -> Dict[str, Any]:
     init_tables(db_path)
     
     today = datetime.date.today()
@@ -602,23 +556,24 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force
     else:
         last_date = get_latest_contract_date(db_path)
         if last_date:
-            # Overlap by 1 day to catch any late contracts created on that date
-            start_date = last_date - datetime.timedelta(days=1)
+            # Step back by overlap_days (default 2 days) to catch late additions on the boundary
+            start_date = max(datetime.date(2024, 1, 1), last_date - datetime.timedelta(days=overlap_days))
         else:
             start_date = datetime.date(2024, 1, 1)
 
     start_str = start_date.strftime("%Y-%m-%d")
     end_str = end_date.strftime("%Y-%m-%d")
     
-    print(f"\n=======================================================")
-    print(f"🚀 GOSZAKUP WEEKLY AUTO-UPDATE")
-    print(f"Database: {db_path}")
-    print(f"Target Period: {start_str} -> {end_str}")
-    print(f"Concurrency: {concurrency} workers | 429 Backoff: {RETRY_PAUSE_429}s")
-    print(f"=======================================================\n", flush=True)
+    print("=" * 65)
+    print(f"🚀 GOSZAKUP WEEKLY INCREMENTAL AUTO-UPDATE")
+    print(f"Target Database: {db_path}")
+    print(f"Latest Date in DB: {get_latest_contract_date(db_path)}")
+    print(f"Scan Window: {start_str} (including -{overlap_days}d overlap) -> {end_str}")
+    print(f"Concurrency: {concurrency} workers | 429 Pause: {RETRY_PAUSE_429}s")
+    print("=" * 65 + "\n", flush=True)
     
-    if start_date >= end_date:
-        print(f"✅ Database is already up to date (last date in DB: {start_date}, today: {end_date}). No update needed.")
+    if start_date >= end_date and (end_date - start_date).days == 0:
+        print(f"✅ Database is already up to date ({start_date}). No update needed.")
         return {
             "status": "up_to_date",
             "from_date": start_str,
@@ -629,17 +584,23 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force
         }
 
     sync_id = record_sync_start(start_str, end_str, db_path)
-    existing_ids = get_existing_contract_ids(db_path)
-    print(f"Loaded {len(existing_ids):,} existing contract IDs from DB for deduplication.", flush=True)
+    existing_ids = get_existing_contract_ids(db_path, since_date=start_str)
+    print(f"Loaded {len(existing_ids):,} contract IDs (since {start_str}) into memory for fast deduplication.", flush=True)
     
+    # Generate 5-day intervals with 1-day boundary overlap (curr = nxt_end)
     intervals = []
     curr = start_date
-    while curr <= end_date:
-        nxt_end = min(curr + datetime.timedelta(days=4), end_date)
+    while curr < end_date:
+        nxt_end = min(curr + datetime.timedelta(days=5), end_date)
         intervals.append((curr.strftime("%Y-%m-%d"), nxt_end.strftime("%Y-%m-%d")))
-        curr = nxt_end + datetime.timedelta(days=1)
+        curr = nxt_end  # Boundary overlap
+        if curr >= end_date:
+            break
+            
+    if not intervals:
+        intervals.append((start_str, end_str))
         
-    print(f"Generated {len(intervals)} intervals of 5 days.", flush=True)
+    print(f"Generated {len(intervals)} intervals with boundary overlap protection.", flush=True)
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -647,7 +608,7 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force
         'Accept-Language': 'ru,en-US;q=0.9,en;q=0.8'
     }
     
-    conn_tcp = aiohttp.TCPConnector(limit=concurrency, ttl_dns_cache=300)
+    conn_tcp = aiohttp.TCPConnector(limit=concurrency, limit_per_host=concurrency, ttl_dns_cache=600, keepalive_timeout=75)
     sem = asyncio.Semaphore(concurrency)
     
     total_new_contracts = 0
@@ -656,13 +617,18 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force
     try:
         async with aiohttp.ClientSession(headers=headers, connector=conn_tcp) as session:
             for idx, (i_start, i_end) in enumerate(intervals, 1):
-                print(f"\n[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Processing interval {idx}/{len(intervals)}: {i_start} -> {i_end}")
-                c_cnt, l_cnt = await scrape_slice(session, sem, i_start, i_end, ALL_METHOD_CODES, existing_ids, 'all', db_path)
+                print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Processing interval {idx}/{len(intervals)}: {i_start} -> {i_end}")
+                c_cnt, l_cnt = await scrape_slice_incremental(session, sem, i_start, i_end, ALL_METHOD_CODES, existing_ids, db_path)
                 total_new_contracts += c_cnt
                 total_new_lots += l_cnt
                 
-        record_sync_complete(sync_id, total_new_contracts, total_new_lots, 'success', f"Synced {total_new_contracts} contracts, {total_new_lots} lots", db_path)
-        print(f"\n🎉 Weekly update completed successfully! +{total_new_contracts:,} contracts, +{total_new_lots:,} lots added.")
+        record_sync_complete(sync_id, total_new_contracts, total_new_lots, 'success', f"Synced +{total_new_contracts:,} contracts, +{total_new_lots:,} lots", db_path)
+        print("\n" + "=" * 65)
+        print(f"🎉 WEEKLY UPDATE COMPLETED SUCCESSFULLY!")
+        print(f"Total new unique contracts added: +{total_new_contracts:,}")
+        print(f"Total new lots added: +{total_new_lots:,}")
+        print(f"Database: {db_path}")
+        print("=" * 65 + "\n", flush=True)
         return {
             "status": "success",
             "sync_id": sync_id,
@@ -673,7 +639,7 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force
         }
     except Exception as e:
         record_sync_complete(sync_id, total_new_contracts, total_new_lots, 'error', str(e), db_path)
-        print(f"❌ Error during weekly update: {e}")
+        print(f"❌ Error during weekly update: {e}", flush=True)
         return {
             "status": "error",
             "sync_id": sync_id,
@@ -685,21 +651,26 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 30, force
         }
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Goszakup Weekly Auto-Updater")
+    parser = argparse.ArgumentParser(description="Goszakup Weekly Incremental Updater")
     parser.add_argument("--db", type=str, default=DB_PATH, help="Path to SQLite database")
-    parser.add_argument("--concurrency", type=int, default=30, help="Number of concurrent sessions (default 30)")
+    parser.add_argument("--concurrency", type=int, default=60, help="Concurrency (default 60)")
     parser.add_argument("--start", type=str, default=None, help="Force specific start date (YYYY-MM-DD)")
     parser.add_argument("--end", type=str, default=None, help="Force specific end date (YYYY-MM-DD)")
-    parser.add_argument("--check-only", action="store_true", help="Only check latest date without updating")
+    parser.add_argument("--overlap-days", type=int, default=2, help="Days to step back from latest date (default 2)")
+    parser.add_argument("--check-only", action="store_true", help="Only check status without running update")
     args = parser.parse_args()
     
     if args.check_only:
         status = get_sync_status(args.db)
         print(f"Database: {status['db_path']}")
-        print(f"Total Contracts: {status['total_contracts']:,}")
+        print(f"Total Unique Contracts: {status['total_contracts']:,}")
         print(f"Total Lots: {status['total_lots']:,}")
         print(f"Latest Contract Date: {status['latest_contract_date']}")
         print(f"Sync Currently Running: {status['is_sync_running']}")
+        if status['recent_syncs']:
+            print("\nRecent Sync History:")
+            for s in status['recent_syncs'][:5]:
+                print(f" - [{s['started_at']} -> {s['completed_at']}] {s['from_date']}..{s['to_date']}: +{s['new_contracts']} contracts, +{s['new_lots']} lots ({s['status']})")
         sys.exit(0)
         
-    asyncio.run(run_weekly_update(db_path=args.db, concurrency=args.concurrency, force_start=args.start, force_end=args.end))
+    asyncio.run(run_weekly_update(db_path=args.db, concurrency=args.concurrency, force_start=args.start, force_end=args.end, overlap_days=args.overlap_days))

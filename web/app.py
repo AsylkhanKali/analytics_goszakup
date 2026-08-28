@@ -327,7 +327,7 @@ async def trigger_weekly_sync(
             force_end=force_end
         )
         
-    background_tasks.add_task(asyncio.run, _async_sync_job())
+    background_tasks.add_task(_async_sync_job)
     
     return {
         "status": "started",

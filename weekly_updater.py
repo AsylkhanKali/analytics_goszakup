@@ -549,7 +549,8 @@ async def run_weekly_update(db_path: str = DB_PATH, concurrency: int = 60, force
     if force_end:
         end_date = datetime.datetime.strptime(force_end, "%Y-%m-%d").date()
     else:
-        end_date = today
+        # Step forward 1 day so filter[start_date_to] includes all contracts signed today
+        end_date = today + datetime.timedelta(days=1)
 
     if force_start:
         start_date = datetime.datetime.strptime(force_start, "%Y-%m-%d").date()

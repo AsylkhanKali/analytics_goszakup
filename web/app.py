@@ -317,7 +317,7 @@ async def trigger_weekly_sync(
         
     latest_date = get_latest_contract_date(target_db)
     start_date_str = force_start if force_start else (str(latest_date) if latest_date else "2024-01-01")
-    today_str = force_end if force_end else str(datetime.date.today())
+    today_str = force_end if force_end else str(datetime.date.today() + datetime.timedelta(days=1))
     
     async def _async_sync_job():
         await run_weekly_update(

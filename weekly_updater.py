@@ -178,8 +178,8 @@ def get_sync_status(db_path: str = DB_PATH) -> Dict[str, Any]:
     init_tables(db_path)
     conn = get_db_connection(db_path)
     c = conn.cursor()
-    c.execute(f"SELECT count(DISTINCT contract_id), count(*) FROM {TABLE_NAME}")
-    c_cnt, l_cnt = c.fetchone()
+    c.execute(f"SELECT count(*) FROM {TABLE_NAME}")
+    l_cnt = c.fetchone()[0]
     last_date = get_latest_contract_date(db_path)
     
     c.execute(f"SELECT sync_id, started_at, completed_at, from_date, to_date, new_contracts_count, new_lots_count, status, details FROM {SYNC_HISTORY_TABLE} ORDER BY sync_id DESC LIMIT 10")
@@ -201,7 +201,6 @@ def get_sync_status(db_path: str = DB_PATH) -> Dict[str, Any]:
     is_running = any(h['status'] == 'running' for h in history[:1])
     return {
         "db_path": db_path,
-        "total_contracts": c_cnt,
         "total_lots": l_cnt,
         "latest_contract_date": str(last_date) if last_date else None,
         "is_sync_running": is_running,
